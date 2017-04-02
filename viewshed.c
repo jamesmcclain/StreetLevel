@@ -44,11 +44,31 @@ void viewshed(const float * src, float * dst,
 
   for (int i = 0; i < cols; ++i)
     {
-      float dx = ((float)(i - x))/y;
-      float currentx = x;
-      float alpha = -INFINITY;
+      float dx, currentx, alpha;
       
-      // wedge 1
+      // north
+      dx = ((float)(i - x))/y;
+      currentx = x;
+      alpha = -INFINITY;
+      for (int currenty = y; currenty >= 0; --currenty, currentx += dx)
+	{
+	  float xchange = xres * (currentx - x);
+	  float ychange = yres * (currenty - y);
+	  float distance = sqrt(xchange*xchange + ychange*ychange);
+	  float elevation = src[currenty * cols + (int)currentx] - viewHeight;
+	  float angle = atan(elevation / distance);
+
+	  if (alpha <= angle)
+	    {
+	      alpha = angle;
+	      dst[currenty * cols + (int)currentx] = 1.0;
+	    }
+	}
+
+      // south
+      dx = ((float)(i - x))/(rows - y);
+      currentx = x;
+      alpha = -INFINITY;
       for (int currenty = y; currenty < rows; ++currenty, currentx += dx)
 	{
 	  float xchange = xres * (currentx - x);
@@ -60,7 +80,7 @@ void viewshed(const float * src, float * dst,
 	  if (alpha <= angle)
 	    {
 	      alpha = angle;
-	      dst[currenty * cols + (int)currentx] += 1.0;
+	      dst[currenty * cols + (int)currentx] = 1.0;
 	    }
 	}
     }
