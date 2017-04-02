@@ -42,6 +42,30 @@ void viewshed(const float * src, float * dst,
   int y = 3072;
   float viewHeight = 2000;
 
+  for (int i = 0; i < rows; ++i)
+    {
+      float dy, currenty, alpha;
+
+      // west
+      dy = ((float)(i - y))/(cols - x);
+      currenty = y;
+      alpha = -INFINITY;
+      for (int currentx = x; currentx >= 0; --currentx, currenty += dy)
+	{
+	  float xchange = xres * (currentx - x);
+	  float ychange = yres * (currenty - y);
+	  float distance = sqrt(xchange*xchange + ychange*ychange);
+	  float elevation = src[(int)currenty * cols + currentx] - viewHeight;
+	  float angle = atan(elevation / distance);
+
+	  if (alpha <= angle)
+	    {
+	      alpha = angle;
+	      dst[(int)currenty * cols + currentx] = 1.0;
+	    }
+	}
+    }
+  
   for (int i = 0; i < cols; ++i)
     {
       float dx, currentx, alpha;
