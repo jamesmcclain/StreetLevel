@@ -29,26 +29,28 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdio.h>
-#include <inttypes.h>
-#include "rasterio.h"
 
+#ifndef __RASTERIO_H__
+#define __RASTERIO_H__
 
-int main(int argc, char ** argv)
-{
-  float * image;
-  uint64_t cols, rows;
-  double transform[6];
-  char * projection;
+#include <stdint.h>
+#include "cpl_conv.h"
+#include "gdal.h"
+#include "ogr_api.h"
+#include "ogr_srs_api.h"
 
-  if (argc < 3) exit(-1);
+extern void init();
+extern void load(const char * filename,
+		 uint64_t * cols, uint64_t * rows,
+		 double * transform,
+		 char ** projection,
+		 float ** image);
+extern void dump(const char * filename,
+		 uint64_t cols, uint64_t rows,
+		 const double * transform,
+		 const char * projection,
+		 const float * image);
+extern double xresolution(const double * transform);
+extern double yresolution(const double * transform);
 
-  init();
-  load(argv[1], &cols, &rows, transform, &projection, &image);
-  dump(argv[2], cols, rows, transform, projection, image);
-
-  fprintf(stdout, "cols=%" PRIu64 " rows=%" PRIu64 " xres=%lf yres=%lf\n",
-	  cols, rows, xresolution(transform), yresolution(transform));
-
-  return 0;
-}
+#endif

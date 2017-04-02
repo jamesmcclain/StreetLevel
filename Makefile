@@ -1,19 +1,26 @@
 GDAL_CFLAGS ?= -I$(HOME)/local/gdal/include
-GDAL_LDFLAGS ?= -L$(HOME)/local/gdal/lib
+GDAL_LDFLAGS ?= -L$(HOME)/local/gdal/lib -lgdal -lopenjp2
 CFLAGS ?= -ggdb3 -O0
+CFLAGS += -std=c99 $(GDAL_CFLAGS)
 LDFLAGS += $(GDAL_LDFLAGS)
-CFLAGS += $(GDAL_CFLAGS)
+
 
 all: streetlevel
 
-streetlevel: main.o
-	$(CC) $(LDFLAGS) $^ -o $@
+streetlevel: main.o rasterio.o
+	$(CC) $^ $(LDFLAGS) -o $@
 
-%.o: %.c %.h
+main.o: main.c *.h
+	$(CC) $(CFLAGS) $< -c -o $@
+
+%.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) %< -c -o $@
 
-%.o: %.c %.h
+%.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
+
+test: streetlevel
+	./streetlevel /tmp/ned.tif /tmp/viewshed.tif
 
 clean:
 	rm -f *.o
