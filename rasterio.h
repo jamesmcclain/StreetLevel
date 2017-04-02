@@ -45,6 +45,11 @@ extern void load(const char * filename,
 		 double * transform,
 		 char ** projection,
 		 float ** image);
+extern void dump(const char * filename,
+		 uint64_t cols, uint64_t rows,
+		 const double * transform,
+		 const char * projection,
+		 const float * image);
 extern double xresolution(const double * transform);
 extern double yresolution(const double * transform);
 

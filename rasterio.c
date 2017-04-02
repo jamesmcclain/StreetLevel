@@ -112,3 +112,42 @@ void load(const char * filename,
 
   GDALClose(dataset);
 }
+
+void dump(const char * filename,
+	  uint64_t cols, uint64_t rows,
+	  const double * transform,
+	  const char * projection,
+	  const float * image)
+{
+  GDALDatasetH dataset;
+  GDALDriverH driver;
+  GDALRasterBandH band;
+
+  driver = GDALGetDriverByName("GTiff");
+  if (!driver)
+    {
+      fprintf(stderr, "Unable to create \"GTiff\" driver %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
+  dataset = GDALCreate(driver, filename, cols, rows, 1, GDT_Float32, NULL);
+  if (!dataset)
+    {
+      fprintf(stderr, "Unable to create dataset %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
+  GDALSetGeoTransform(dataset, transform);
+  GDALSetProjection(dataset, projection);
+  band = GDALGetRasterBand(dataset, 1);
+  GDALRasterIO(band, GF_Write, 0, 0, cols, rows, image, cols, rows, GDT_Float32, 0, 0);
+  GDALClose( dataset );
+}
+
+double xresolution(const double * transform)
+{
+  return transform[1] / 2.0;
+}
+
+double yresolution(const double * transform)
+{
+  return -transform[5] / 2.0;
+}

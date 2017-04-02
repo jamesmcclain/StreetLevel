@@ -45,6 +45,7 @@ int main(int argc, char ** argv)
 
   init();
   load(argv[1], &cols, &rows, transform, &projection, &image);
+  dump(argv[2], cols, rows, transform, projection, image);
 
   fprintf(stdout, "cols=%" PRIu64 " rows=%" PRIu64 " xres=%lf yres=%lf\n",
 	  cols, rows, xresolution(transform), yresolution(transform));
