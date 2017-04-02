@@ -22,6 +22,12 @@ main.o: main.c *.h
 test: streetlevel
 	streetlevel /tmp/ned.tif /tmp/viewshed.tif
 
+valgrind: streetlevel
+	valgrind --leak-check=full streetlevel /tmp/ned.tif /tmp/viewshed.tif
+
+cachegrind: streetlevel
+	valgrind --tool=cachegrind --branch-sim=yes streetlevel /tmp/ned.tif /tmp/viewshed.tif
+
 clean:
 	rm -f *.o
 

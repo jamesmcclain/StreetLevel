@@ -59,5 +59,7 @@ int main(int argc, char ** argv)
   dump(argv[2], cols, rows, transform, projection, dst);
   fprintf(stdout, "%d seconds\n", after - before);
 
+  free(dst);
+
   return 0;
 }
