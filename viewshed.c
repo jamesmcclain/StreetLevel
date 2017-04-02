@@ -30,34 +30,38 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
-#include <inttypes.h>
-#include <time.h>
-#include "rasterio.h"
-#include "viewshed.h"
+#include <stdint.h>
+#include <math.h>
 
 
-int main(int argc, char ** argv)
+void viewshed(const float * src, float * dst,
+	      uint64_t cols, uint64_t rows,
+	      double xres, double yres)
 {
-  float * src, * dst;
-  uint64_t cols, rows;
-  double transform[6];
-  char * projection;
-  time_t before, after;
+  int x = 4608;
+  int y = 3072;
+  float viewHeight = 2000;
 
-  if (argc < 3)
+  for (int i = 0; i < cols; ++i)
     {
-      fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
+      float dx = ((float)(i - x))/y;
+      float currentx = x;
+      float alpha = -INFINITY;
+      
+      // wedge 1
+      for (int currenty = y; currenty < rows; ++currenty, currentx += dx)
+	{
+	  float xchange = xres * (currentx - x);
+	  float ychange = yres * (currenty - y);
+	  float distance = sqrt(xchange*xchange + ychange*ychange);
+	  float elevation = src[currenty * cols + (int)currentx] - viewHeight;
+	  float angle = atan(elevation / distance);
+
+	  if (alpha <= angle)
+	    {
+	      alpha = angle;
+	      dst[currenty * cols + (int)currentx] += 1.0;
+	    }
+	}
     }
-
-  init();
-  load(argv[1], &cols, &rows, transform, &projection, &src);
-  dst = calloc(cols * rows, sizeof(float));
-  before = time(NULL);
-  viewshed(src, dst, cols, rows, xresolution(transform), yresolution(transform));
-  after = time(NULL);
-  dump(argv[2], cols, rows, transform, projection, dst);
-  fprintf(stdout, "%d seconds\n", after - before);
-
-  return 0;
 }
