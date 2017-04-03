@@ -79,30 +79,6 @@ void load(const char * filename,
       strncpy(*projection, proj, n);
     }
 
-#if 0
-  int blockx, blocky;
-  int bGotMin, bGotMax;
-  double adfMinMax[2];
-
-  printf("Driver: %s/%s\n", GDALGetDriverShortName(driver), GDALGetDriverLongName(driver));
-  printf("Size is %dx%dx%d\n", GDALGetRasterXSize(dataset), GDALGetRasterYSize(dataset), GDALGetRasterCount(dataset));
-  if(GDALGetProjectionRef(dataset) != NULL)
-    printf("Projection is `%s'\n", GDALGetProjectionRef(dataset));
-  printf("Origin = (%.6f,%.6f)\n", transform[0], transform[3]);
-  printf("Pixel Size = (%.6f,%.6f)\n", transform[1], transform[5]);
-  GDALGetBlockSize( band, &blockx, &blocky );
-  printf("Block=%dx%d Type=%s, ColorInterp=%s\n", blockx, blocky, GDALGetDataTypeName(GDALGetRasterDataType(band)), GDALGetColorInterpretationName(GDALGetRasterColorInterpretation(band)));
-  adfMinMax[0] = GDALGetRasterMinimum(band, &bGotMin);
-  adfMinMax[1] = GDALGetRasterMaximum(band, &bGotMax);
-  if(!(bGotMin && bGotMax))
-    GDALComputeRasterMinMax(band, TRUE, adfMinMax);
-  printf("Min=%.3fd, Max=%.3f\n", adfMinMax[0], adfMinMax[1]);
-  if(GDALGetOverviewCount(band) > 0)
-    printf("Band has %d overviews.\n", GDALGetOverviewCount(band));
-  if(GDALGetRasterColorTable( band ) != NULL)
-    printf("Band has a color table with %d entries.\n", GDALGetColorEntryCount(GDALGetRasterColorTable(band)));
-#endif
-
   origcols = GDALGetRasterBandXSize(band);
   origrows = GDALGetRasterBandYSize(band);
   *cols = origcols % TILESIZE ? ((origcols >> TILEBITS) + 1) << TILEBITS : origcols;
