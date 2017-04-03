@@ -1,7 +1,7 @@
 GDAL_CFLAGS ?= -I$(HOME)/local/gdal/include
 GDAL_LDFLAGS ?= -L$(HOME)/local/gdal/lib -lgdal -lopenjp2
 CFLAGS ?= -ggdb3 -O0
-CFLAGS += -std=c99 $(GDAL_CFLAGS)
+CFLAGS += -std=c11 $(GDAL_CFLAGS)
 LDFLAGS += $(GDAL_LDFLAGS) -lm
 
 

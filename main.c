@@ -39,7 +39,7 @@
 int main(int argc, char ** argv)
 {
   float * src, * dst;
-  uint64_t cols, rows;
+  uint32_t cols, rows;
   double transform[6];
   char * projection;
   time_t before, after;
@@ -59,6 +59,7 @@ int main(int argc, char ** argv)
   dump(argv[2], cols, rows, transform, projection, dst);
   fprintf(stdout, "%d seconds\n", after - before);
 
+  free(src);
   free(dst);
 
   return 0;

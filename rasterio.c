@@ -46,7 +46,7 @@ void init()
 }
 
 void load(const char * filename,
-	  uint64_t * cols, uint64_t * rows,
+	  uint32_t * cols, uint32_t * rows,
 	  double * transform,
 	  char ** projection,
 	  float ** image)
@@ -55,6 +55,8 @@ void load(const char * filename,
   GDALDriverH driver;
   GDALRasterBandH band;
   const char * proj;
+  float * tmp;
+  int origcols, origrows;
 
   dataset = GDALOpen(filename, GA_ReadOnly);
   if (!dataset)
@@ -101,21 +103,38 @@ void load(const char * filename,
     printf("Band has a color table with %d entries.\n", GDALGetColorEntryCount(GDALGetRasterColorTable(band)));
 #endif
 
-  *cols = GDALGetRasterBandXSize(band);
-  *rows = GDALGetRasterBandYSize(band);
+  origcols = GDALGetRasterBandXSize(band);
+  origrows = GDALGetRasterBandYSize(band);
+  *cols = origcols % TILESIZE ? ((origcols >> TILEBITS) + 1) << TILEBITS : origcols;
+  *rows = origrows % TILESIZE ? ((origrows >> TILEBITS) + 1) << TILEBITS : origrows;
+
   band = GDALGetRasterBand( dataset, 1 );
-  *image = (float *) CPLMalloc(sizeof(float) * *cols * *rows);
-  if (GDALRasterIO(band, GF_Read, 0, 0, *cols, *rows, *image, *cols, *rows, GDT_Float32, 0, 0))
+
+  if (!(tmp = (float *) CPLMalloc(sizeof(float) * *cols * *rows)))
+    {
+      fprintf(stderr, "CPLMalloc failed %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
+
+  if (!(*image = (float *) aligned_alloc(1<<12, sizeof(float) * *cols * *rows)))
+    {
+      fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
+
+  if (GDALRasterIO(band, GF_Read, 0, 0, origcols, origrows, tmp, origcols, origrows, GDT_Float32, 0, sizeof(float) * *cols))
     {
       fprintf(stderr, "GDALRasterIO failed %s:%d\n", __FILE__, __LINE__);
       exit(-1);
     }
 
+  memcpy(*image, tmp, sizeof(float) * *cols * *rows);
+  CPLFree(tmp);
   GDALClose(dataset);
 }
 
 void dump(const char * filename,
-	  uint64_t cols, uint64_t rows,
+	  uint32_t cols, uint32_t rows,
 	  const double * transform,
 	  const char * projection,
 	  const float * image)

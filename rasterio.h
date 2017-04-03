@@ -39,14 +39,18 @@
 #include "ogr_api.h"
 #include "ogr_srs_api.h"
 
+#define TILEBITS (5)
+#define TILESIZE (1<<TILEBITS)
+#define SUBTILESIZE (4)
+
 extern void init();
 extern void load(const char * filename,
-		 uint64_t * cols, uint64_t * rows,
+		 uint32_t * cols, uint32_t * rows,
 		 double * transform,
 		 char ** projection,
 		 float ** image);
 extern void dump(const char * filename,
-		 uint64_t cols, uint64_t rows,
+		 uint32_t cols, uint32_t rows,
 		 const double * transform,
 		 const char * projection,
 		 const float * image);
