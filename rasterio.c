@@ -35,6 +35,7 @@
 #include <string.h>
 #include "rasterio.h"
 
+
 /*
  * Reference: http://www.gdal.org/gdal_tutorial.html
  */
@@ -106,7 +107,7 @@ void load(const char * filename,
   *image = (float *) CPLMalloc(sizeof(float) * *cols * *rows);
   if (GDALRasterIO(band, GF_Read, 0, 0, *cols, *rows, *image, *cols, *rows, GDT_Float32, 0, 0))
     {
-      fprintf(stdout, "GDALRasterIO failed\n");
+      fprintf(stderr, "GDALRasterIO failed %s:%d\n", __FILE__, __LINE__);
       exit(-1);
     }
 
