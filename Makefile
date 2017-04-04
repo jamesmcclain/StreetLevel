@@ -35,3 +35,4 @@ cleaner: clean
 	rm -f streetlevel
 
 cleanest: cleaner
+	rm -f cachegrind.out.*
