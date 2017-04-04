@@ -32,10 +32,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
+#include "rasterio.h"
 
 
 void viewshed(const float * src, float * dst,
-	      uint64_t cols, uint64_t rows,
+	      uint32_t cols, uint32_t rows,
 	      double xres, double yres)
 {
   int x = 4608;
@@ -52,16 +53,17 @@ void viewshed(const float * src, float * dst,
       alpha = -INFINITY;
       for (int currentx = x; currentx < cols; ++currentx, currenty += dy)
 	{
+	  int index = xy_to_index(cols, currentx, (int)currenty);
 	  float xchange = xres * (currentx - x);
 	  float ychange = yres * (currenty - y);
 	  float distance = sqrt(xchange*xchange + ychange*ychange);
-	  float elevation = src[(int)currenty * cols + currentx] - viewHeight;
+	  float elevation = src[index] - viewHeight;
 	  float angle = atan(elevation / distance);
 
 	  if (alpha <= angle)
 	    {
 	      alpha = angle;
-	      dst[(int)currenty * cols + currentx] = 1.0;
+	      dst[index] = 1.0;
 	    }
 	}
 
@@ -71,16 +73,17 @@ void viewshed(const float * src, float * dst,
       alpha = -INFINITY;
       for (int currentx = x; currentx >= 0; --currentx, currenty += dy)
 	{
+	  int index = xy_to_index(cols, currentx, (int)currenty);
 	  float xchange = xres * (currentx - x);
 	  float ychange = yres * (currenty - y);
 	  float distance = sqrt(xchange*xchange + ychange*ychange);
-	  float elevation = src[(int)currenty * cols + currentx] - viewHeight;
+	  float elevation = src[index] - viewHeight;
 	  float angle = atan(elevation / distance);
 
 	  if (alpha <= angle)
 	    {
 	      alpha = angle;
-	      dst[(int)currenty * cols + currentx] = 1.0;
+	      dst[index] = 1.0;
 	    }
 	}
     }
@@ -95,16 +98,17 @@ void viewshed(const float * src, float * dst,
       alpha = -INFINITY;
       for (int currenty = y; currenty >= 0; --currenty, currentx += dx)
 	{
+	  int index = xy_to_index(cols, (int)currentx, currenty);
 	  float xchange = xres * (currentx - x);
 	  float ychange = yres * (currenty - y);
 	  float distance = sqrt(xchange*xchange + ychange*ychange);
-	  float elevation = src[currenty * cols + (int)currentx] - viewHeight;
+	  float elevation = src[index] - viewHeight;
 	  float angle = atan(elevation / distance);
 
 	  if (alpha <= angle)
 	    {
 	      alpha = angle;
-	      dst[currenty * cols + (int)currentx] = 1.0;
+	      dst[index] = 1.0;
 	    }
 	}
 
@@ -114,16 +118,17 @@ void viewshed(const float * src, float * dst,
       alpha = -INFINITY;
       for (int currenty = y; currenty < rows; ++currenty, currentx += dx)
 	{
+	  int index = xy_to_index(cols, (int)currentx, currenty);
 	  float xchange = xres * (currentx - x);
 	  float ychange = yres * (currenty - y);
 	  float distance = sqrt(xchange*xchange + ychange*ychange);
-	  float elevation = src[currenty * cols + (int)currentx] - viewHeight;
+	  float elevation = src[index] - viewHeight;
 	  float angle = atan(elevation / distance);
 
 	  if (alpha <= angle)
 	    {
 	      alpha = angle;
-	      dst[currenty * cols + (int)currentx] = 1.0;
+	      dst[index] = 1.0;
 	    }
 	}
     }
