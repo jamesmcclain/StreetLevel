@@ -31,105 +31,162 @@
  */
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <math.h>
 #include "rasterio.h"
 
+
+#define ALLOC(P,N) if (!(P = aligned_alloc(PAGESIZE, sizeof(float) * (N)))) { fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__); exit(-1); }
 
 void viewshed(const float * src, float * dst,
 	      uint32_t cols, uint32_t rows,
 	      double xres, double yres)
 {
-  int x = 4608;
-  int y = 3072;
-  float viewHeight = 2000;
+  float * alphas = NULL;
+  float * dys = NULL;
+  float * dms = NULL;
+  int larger = (cols > rows ? cols : rows);
 
-  for (int i = 0; i < rows; ++i)
+  int x = 4608; // XXX
+  int y = 3072; // XXX
+  float viewHeight = 2000; // XXX
+  
+  ALLOC(alphas, larger);
+  ALLOC(dys, larger);
+  ALLOC(dms, larger);
+
+  // east
+  for (int j = 0; j < larger; ++j)
     {
-      float dy, currenty, alpha;
-
-      // east
-      dy = ((float)(i - y))/x;
-      currenty = y;
-      alpha = -INFINITY;
-      for (int currentx = x; currentx < cols; ++currentx, currenty += dy)
+      dys[j] = ((float)(j - y))/x;
+      dms[j] = sqrt((1*xres)*(1*xres) + (dys[j]*yres)*(dys[j]*yres));
+      alphas[j] = -INFINITY;
+    }
+  for (int i = x; i < cols; i += TILESIZE) // for each block of columns // XXX align to page
+    {
+      for (int j = 0; j < rows; ++j) // for each ray (indexed by final row)
 	{
-	  int index = xy_to_index(cols, currentx, (int)currenty);
-	  float xchange = xres * (currentx - x);
-	  float ychange = yres * (currenty - y);
-	  float distance = sqrt(xchange*xchange + ychange*ychange);
-	  float elevation = src[index] - viewHeight;
-	  float angle = atan(elevation / distance);
+	  // restore context from arrays
+	  float dy = dys[j];
+	  float dm = dms[j];
+	  float alpha = alphas[j];
+	  float current_y = y + (i - x) * dy;
+	  float distance = (i - x) * dm;
 
-	  if (alpha <= angle)
+	  // extent ray TILESIZE pixels to the east
+	  for (int k = 0; k < TILESIZE; ++k, current_y += dy, distance += dm)
 	    {
-	      alpha = angle;
-	      dst[index] = 1.0;
-	    }
-	}
+	      int current_x = i + k;
+	      int index = xy_to_index(cols, current_x, (int)current_y);
+	      float elevation = src[index] - viewHeight;
+	      float angle = atan(elevation / distance);
 
-      // west
-      dy = ((float)(i - y))/(cols - x);
-      currenty = y;
-      alpha = -INFINITY;
-      for (int currentx = x; currentx >= 0; --currentx, currenty += dy)
-	{
-	  int index = xy_to_index(cols, currentx, (int)currenty);
-	  float xchange = xres * (currentx - x);
-	  float ychange = yres * (currenty - y);
-	  float distance = sqrt(xchange*xchange + ychange*ychange);
-	  float elevation = src[index] - viewHeight;
-	  float angle = atan(elevation / distance);
-
-	  if (alpha <= angle)
-	    {
-	      alpha = angle;
-	      dst[index] = 1.0;
+	      if (alpha < angle)
+		{
+		  alpha = angle;
+		  dst[index] = 1.0;
+		}
 	    }
+
+	  // save context
+	  alphas[j] = alpha;
 	}
     }
   
-  for (int i = 0; i < cols; ++i)
-    {
-      float dx, currentx, alpha;
+  /* for (int i = 0; i < rows; ++i) */
+  /*   { */
+  /*     float dy, current_y, alpha; */
+
+  /*     // east */
+  /*     dy = ((float)(i - y))/x; */
+  /*     current_y = y; */
+  /*     alpha = -INFINITY; */
+  /*     for (int j = x; j < cols; j += TILESIZE) */
+  /* 	{ */
+  /* 	  for (int k = 0; k < TILESIZE; ++k) */
+  /* 	    { */
+  /* 	    } */
+  /* 	} */
       
-      // north
-      dx = ((float)(i - x))/y;
-      currentx = x;
-      alpha = -INFINITY;
-      for (int currenty = y; currenty >= 0; --currenty, currentx += dx)
-	{
-	  int index = xy_to_index(cols, (int)currentx, currenty);
-	  float xchange = xres * (currentx - x);
-	  float ychange = yres * (currenty - y);
-	  float distance = sqrt(xchange*xchange + ychange*ychange);
-	  float elevation = src[index] - viewHeight;
-	  float angle = atan(elevation / distance);
+  /*     for (int current_x = x; current_x < cols; ++current_x, current_y += dy) */
+  /* 	{ */
+  /* 	  int index = xy_to_index(cols, current_x, (int)current_y); */
+  /* 	  float xchange = xres * (current_x - x); */
+  /* 	  float ychange = yres * (current_y - y); */
+  /* 	  float distance = sqrt(xchange*xchange + ychange*ychange); */
+  /* 	  float elevation = src[index] - viewHeight; */
+  /* 	  float angle = atan(elevation / distance); */
 
-	  if (alpha <= angle)
-	    {
-	      alpha = angle;
-	      dst[index] = 1.0;
-	    }
-	}
+  /* 	  if (alpha <= angle) */
+  /* 	    { */
+  /* 	      alpha = angle; */
+  /* 	      dst[index] = 1.0; */
+  /* 	    } */
+  /* 	} */
 
-      // south
-      dx = ((float)(i - x))/(rows - y);
-      currentx = x;
-      alpha = -INFINITY;
-      for (int currenty = y; currenty < rows; ++currenty, currentx += dx)
-	{
-	  int index = xy_to_index(cols, (int)currentx, currenty);
-	  float xchange = xres * (currentx - x);
-	  float ychange = yres * (currenty - y);
-	  float distance = sqrt(xchange*xchange + ychange*ychange);
-	  float elevation = src[index] - viewHeight;
-	  float angle = atan(elevation / distance);
+      /* // west */
+      /* dy = ((float)(i - y))/(cols - x); */
+      /* current_y = y; */
+      /* alpha = -INFINITY; */
+      /* for (int current_x = x; current_x >= 0; --current_x, current_y += dy) */
+      /* 	{ */
+      /* 	  int index = xy_to_index(cols, current_x, (int)current_y); */
+      /* 	  float xchange = xres * (current_x - x); */
+      /* 	  float ychange = yres * (current_y - y); */
+      /* 	  float distance = sqrt(xchange*xchange + ychange*ychange); */
+      /* 	  float elevation = src[index] - viewHeight; */
+      /* 	  float angle = atan(elevation / distance); */
 
-	  if (alpha <= angle)
-	    {
-	      alpha = angle;
-	      dst[index] = 1.0;
-	    }
-	}
-    }
+      /* 	  if (alpha <= angle) */
+      /* 	    { */
+      /* 	      alpha = angle; */
+      /* 	      dst[index] = 1.0; */
+      /* 	    } */
+      /* 	} */
+    /* } */
+  
+  /* for (int i = 0; i < cols; ++i) */
+  /*   { */
+  /*     float dx, current_x, alpha; */
+      
+  /*     // north */
+  /*     dx = ((float)(i - x))/y; */
+  /*     current_x = x; */
+  /*     alpha = -INFINITY; */
+  /*     for (int current_y = y; current_y >= 0; --current_y, current_x += dx) */
+  /* 	{ */
+  /* 	  int index = xy_to_index(cols, (int)current_x, current_y); */
+  /* 	  float xchange = xres * (current_x - x); */
+  /* 	  float ychange = yres * (current_y - y); */
+  /* 	  float distance = sqrt(xchange*xchange + ychange*ychange); */
+  /* 	  float elevation = src[index] - viewHeight; */
+  /* 	  float angle = atan(elevation / distance); */
+
+  /* 	  if (alpha <= angle) */
+  /* 	    { */
+  /* 	      alpha = angle; */
+  /* 	      dst[index] = 1.0; */
+  /* 	    } */
+  /* 	} */
+
+  /*     // south */
+  /*     dx = ((float)(i - x))/(rows - y); */
+  /*     current_x = x; */
+  /*     alpha = -INFINITY; */
+  /*     for (int current_y = y; current_y < rows; ++current_y, current_x += dx) */
+  /* 	{ */
+  /* 	  int index = xy_to_index(cols, (int)current_x, current_y); */
+  /* 	  float xchange = xres * (current_x - x); */
+  /* 	  float ychange = yres * (current_y - y); */
+  /* 	  float distance = sqrt(xchange*xchange + ychange*ychange); */
+  /* 	  float elevation = src[index] - viewHeight; */
+  /* 	  float angle = atan(elevation / distance); */
+
+  /* 	  if (alpha <= angle) */
+  /* 	    { */
+  /* 	      alpha = angle; */
+  /* 	      dst[index] = 1.0; */
+  /* 	    } */
+  /* 	} */
+  /*   } */
 }
