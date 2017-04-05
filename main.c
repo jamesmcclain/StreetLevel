@@ -31,7 +31,7 @@
  */
 #include <stdio.h>
 #include <inttypes.h>
-#include <time.h>
+#include <sys/time.h>
 #include "rasterio.h"
 #include "viewshed.h"
 
@@ -42,7 +42,7 @@ int main(int argc, char ** argv)
   uint32_t cols, rows;
   double transform[6];
   char * projection;
-  time_t before, after;
+  struct timeval before, after;
 
   if (argc < 3)
     {
@@ -53,11 +53,11 @@ int main(int argc, char ** argv)
   init();
   load(argv[1], &cols, &rows, transform, &projection, &src);
   dst = calloc(cols * rows, sizeof(float));
-  before = time(NULL);
+  gettimeofday(&before, NULL);
   viewshed(src, dst, cols, rows, x_resolution(transform), y_resolution(transform));
-  after = time(NULL);
+  gettimeofday(&after, NULL);
   dump(argv[2], cols, rows, transform, projection, dst);
-  fprintf(stdout, "%d seconds\n", after - before);
+  fprintf(stdout, "%d us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
 
   free(src);
   free(dst);
