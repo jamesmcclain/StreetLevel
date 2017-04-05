@@ -39,7 +39,7 @@
 int main(int argc, char ** argv)
 {
   float * src, * dst;
-  uint64_t cols, rows;
+  uint32_t cols, rows;
   double transform[6];
   char * projection;
   time_t before, after;
@@ -54,11 +54,12 @@ int main(int argc, char ** argv)
   load(argv[1], &cols, &rows, transform, &projection, &src);
   dst = calloc(cols * rows, sizeof(float));
   before = time(NULL);
-  viewshed(src, dst, cols, rows, xresolution(transform), yresolution(transform));
+  viewshed(src, dst, cols, rows, x_resolution(transform), y_resolution(transform));
   after = time(NULL);
   dump(argv[2], cols, rows, transform, projection, dst);
   fprintf(stdout, "%d seconds\n", after - before);
 
+  free(src);
   free(dst);
 
   return 0;

@@ -34,23 +34,37 @@
 #define __RASTERIO_H__
 
 #include <stdint.h>
-#include "cpl_conv.h"
 #include "gdal.h"
+#include "cpl_conv.h"
 #include "ogr_api.h"
 #include "ogr_srs_api.h"
 
+
+#define PAGEBITS (12)
+#define PAGESIZE (1<<PAGEBITS)
+
+#define TILEBITS (5)
+#define TILESIZE (1<<TILEBITS)
+#define TILEMASK (0x1f)
+
+#define SUBTILEBITS (2)
+#define SUBTILESIZE (1<<SUBTILEBITS)
+#define SUBTILEMASK (0x03)
+
+
 extern void init();
 extern void load(const char * filename,
-		 uint64_t * cols, uint64_t * rows,
+		 uint32_t * cols, uint32_t * rows,
 		 double * transform,
 		 char ** projection,
 		 float ** image);
 extern void dump(const char * filename,
-		 uint64_t cols, uint64_t rows,
+		 uint32_t cols, uint32_t rows,
 		 const double * transform,
 		 const char * projection,
 		 const float * image);
-extern double xresolution(const double * transform);
-extern double yresolution(const double * transform);
+extern double x_resolution(const double * transform);
+extern double y_resolution(const double * transform);
+extern uint32_t xy_to_index(uint32_t cols, uint32_t x, uint32_t y);
 
 #endif

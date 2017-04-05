@@ -40,13 +40,14 @@
  * Reference: http://www.gdal.org/gdal_tutorial.html
  */
 
+
 void init()
 {
   GDALAllRegister();
 }
 
 void load(const char * filename,
-	  uint64_t * cols, uint64_t * rows,
+	  uint32_t * cols, uint32_t * rows,
 	  double * transform,
 	  char ** projection,
 	  float ** image)
@@ -54,68 +55,75 @@ void load(const char * filename,
   GDALDatasetH dataset;
   GDALDriverH driver;
   GDALRasterBandH band;
-  const char * proj;
+  const char * proj = NULL;
+  float * tmp = NULL;
+  uint32_t orig_cols, orig_rows;
 
-  dataset = GDALOpen(filename, GA_ReadOnly);
+  dataset = GDALOpen(filename, GA_ReadOnly);  // GDAL dataset
   if (!dataset)
     {
       fprintf(stderr, "Unable to open file %s %s:%d\n", filename, __FILE__, __LINE__);
       exit(-1);
     }
-  driver = GDALGetDatasetDriver(dataset);
-  band = GDALGetRasterBand(dataset, 1);
-  if(GDALGetGeoTransform(dataset, transform) != CE_None)
+  driver = GDALGetDatasetDriver(dataset); // GDAL driver
+  band = GDALGetRasterBand(dataset, 1); // Get the first band
+  if (GDALGetGeoTransform(dataset, transform) != CE_None) // Get the transform
     {
       fprintf(stderr, "Incomprehensible transform %s:%d\n", __FILE__, __LINE__);
       exit(-1);
     }
-  proj = GDALGetProjectionRef(dataset);
-  if (proj)
+  if ((proj = GDALGetProjectionRef(dataset))) // Get the projection
     {
       int n = strlen(proj);
       *projection = malloc(sizeof(char) * (n+1));
       strncpy(*projection, proj, n);
     }
 
-#if 0
-  int blockx, blocky;
-  int bGotMin, bGotMax;
-  double adfMinMax[2];
+  orig_cols = GDALGetRasterBandXSize(band); // Number of columns
+  orig_rows = GDALGetRasterBandYSize(band); // Number of rows
+  *cols = orig_cols % TILESIZE ? (((orig_cols >> TILEBITS) + 1) << TILEBITS) : orig_cols; // Padded columns
+  *rows = orig_rows % TILESIZE ? (((orig_rows >> TILEBITS) + 1) << TILEBITS) : orig_rows; // Padded rows
 
-  printf("Driver: %s/%s\n", GDALGetDriverShortName(driver), GDALGetDriverLongName(driver));
-  printf("Size is %dx%dx%d\n", GDALGetRasterXSize(dataset), GDALGetRasterYSize(dataset), GDALGetRasterCount(dataset));
-  if(GDALGetProjectionRef(dataset) != NULL)
-    printf("Projection is `%s'\n", GDALGetProjectionRef(dataset));
-  printf("Origin = (%.6f,%.6f)\n", transform[0], transform[3]);
-  printf("Pixel Size = (%.6f,%.6f)\n", transform[1], transform[5]);
-  GDALGetBlockSize( band, &blockx, &blocky );
-  printf("Block=%dx%d Type=%s, ColorInterp=%s\n", blockx, blocky, GDALGetDataTypeName(GDALGetRasterDataType(band)), GDALGetColorInterpretationName(GDALGetRasterColorInterpretation(band)));
-  adfMinMax[0] = GDALGetRasterMinimum(band, &bGotMin);
-  adfMinMax[1] = GDALGetRasterMaximum(band, &bGotMax);
-  if(!(bGotMin && bGotMax))
-    GDALComputeRasterMinMax(band, TRUE, adfMinMax);
-  printf("Min=%.3fd, Max=%.3f\n", adfMinMax[0], adfMinMax[1]);
-  if(GDALGetOverviewCount(band) > 0)
-    printf("Band has %d overviews.\n", GDALGetOverviewCount(band));
-  if(GDALGetRasterColorTable( band ) != NULL)
-    printf("Band has a color table with %d entries.\n", GDALGetColorEntryCount(GDALGetRasterColorTable(band)));
-#endif
+  if (!(tmp = (float *) CPLMalloc(sizeof(float) * *cols * *rows))) // Untiled image
+    {
+      fprintf(stderr, "CPLMalloc failed %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
 
-  *cols = GDALGetRasterBandXSize(band);
-  *rows = GDALGetRasterBandYSize(band);
-  band = GDALGetRasterBand( dataset, 1 );
-  *image = (float *) CPLMalloc(sizeof(float) * *cols * *rows);
-  if (GDALRasterIO(band, GF_Read, 0, 0, *cols, *rows, *image, *cols, *rows, GDT_Float32, 0, 0))
+  if (!(*image = (float *) aligned_alloc(PAGESIZE, sizeof(float) * *cols * *rows))) // Tiled image
+    {
+      fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
+
+  if (GDALRasterIO(band, GF_Read, // Copy data
+		   0, 0,
+		   orig_cols, orig_rows,
+		   tmp,
+		   orig_cols, orig_rows,
+		   GDT_Float32,
+		   0, sizeof(float) * *cols))
     {
       fprintf(stderr, "GDALRasterIO failed %s:%d\n", __FILE__, __LINE__);
       exit(-1);
     }
 
+  for (int i = 0; i < *cols; ++i) // Copy untiled image data into tiled array
+    {
+      for (int j = 0; j < *rows; ++j)
+	{
+	  int src_index = j * *cols + i;
+	  int dst_index = xy_to_index(*cols, i, j);
+	  (*image)[dst_index] = tmp[src_index];
+	}
+    }
+
+  CPLFree(tmp);
   GDALClose(dataset);
 }
 
 void dump(const char * filename,
-	  uint64_t cols, uint64_t rows,
+	  uint32_t cols, uint32_t rows,
 	  const double * transform,
 	  const char * projection,
 	  const float * image)
@@ -123,6 +131,22 @@ void dump(const char * filename,
   GDALDatasetH dataset;
   GDALDriverH driver;
   GDALRasterBandH band;
+  float * tmp = NULL;
+
+  if (!(tmp = (float *) CPLMalloc(sizeof(float) * cols * rows))) // Untiled image
+    {
+      fprintf(stderr, "CPLMalloc failed %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
+  for (int i = 0; i < cols; ++i) // Copy tiled data into untiled image
+    {
+      for (int j = 0; j < rows; ++j)
+  	{
+  	  int dst_index = j * cols + i;
+  	  int src_index = xy_to_index(cols, i, j);
+  	  tmp[dst_index] = image[src_index];
+  	}
+    }
 
   driver = GDALGetDriverByName("GTiff");
   if (!driver)
@@ -139,16 +163,57 @@ void dump(const char * filename,
   GDALSetGeoTransform(dataset, transform);
   GDALSetProjection(dataset, projection);
   band = GDALGetRasterBand(dataset, 1);
-  GDALRasterIO(band, GF_Write, 0, 0, cols, rows, image, cols, rows, GDT_Float32, 0, 0);
-  GDALClose( dataset );
+  if (GDALRasterIO(band, GF_Write,
+		   0, 0,
+		   cols, rows,
+		   tmp,
+		   cols, rows,
+		   GDT_Float32,
+		   0, 0))
+    {
+      fprintf(stderr, "GDALRasterIO failed %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
+
+  GDALClose(dataset);
+  CPLFree(tmp);
 }
 
-double xresolution(const double * transform)
+double x_resolution(const double * transform)
 {
   return transform[1] / 2.0;
 }
 
-double yresolution(const double * transform)
+double y_resolution(const double * transform)
 {
   return -transform[5] / 2.0;
+}
+
+uint32_t xy_to_index(uint32_t cols, uint32_t x, uint32_t y)
+{
+  int tile_row_words = cols * TILESIZE; // words per row of tiles
+  int tile_x = x >> TILEBITS; // column of tile that (x,y) is in
+  int tile_y = y >> TILEBITS; // row of tile that (x,y) is in
+  int major_index = (tile_y * tile_row_words) + (tile_x * TILESIZE * TILESIZE); // index of tile
+
+#if 0
+  int minor_row_words = TILESIZE;
+  int minor_x = x & TILEMASK;
+  int minor_y = y & TILEMASK;
+  int minor_index = (minor_y * minor_row_words) + minor_x;
+
+  return major_index + minor_index;
+#endif
+  
+  int subtile_row_words = TILESIZE * SUBTILESIZE; // words per row of subtiles
+  int subtile_x = (x & TILEMASK) >> SUBTILEBITS; // column of subtile (within tile) that (x,y) is in
+  int subtile_y = (y & TILEMASK) >> SUBTILEBITS; // row of subtile that (x,y) is in
+  int minor_index = (subtile_y * subtile_row_words) + (subtile_x * SUBTILESIZE * SUBTILESIZE); // index of subtile
+
+  int micro_row_words = SUBTILESIZE; // words per row within a subtile
+  int micro_x = x & SUBTILEMASK; // column within subtile
+  int micro_y = y & SUBTILEMASK; // row within subtile
+  int micro_index = (micro_y * micro_row_words) + micro_x;
+
+  return major_index + minor_index + micro_index;
 }
