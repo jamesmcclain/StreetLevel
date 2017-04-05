@@ -50,20 +50,28 @@ void viewshed(const float * src, float * dst,
   int x = 4608; // XXX
   int y = 3072; // XXX
   float viewHeight = 2000; // XXX
-  
+
   ALLOC(alphas, larger);
   ALLOC(dys, larger);
   ALLOC(dms, larger);
 
-  // east
+  // East
   for (int j = 0; j < larger; ++j)
     {
       dys[j] = ((float)(j - y))/x;
       dms[j] = sqrt((1*xres)*(1*xres) + (dys[j]*yres)*(dys[j]*yres));
       alphas[j] = -INFINITY;
     }
-  for (int i = x; i < cols; i += TILESIZE) // for each block of columns // XXX align to page
+  for (int i = x, width = 1; i < cols; i += width)
     {
+      // Compute the width of this slice of columns.  Nominally
+      // TILESIZE, but may be something else on the first iteration in
+      // order to get aligned with tiles/pages.
+      if (i == x)
+	for (; (i + width) % TILESIZE; ++width);
+      else
+	width = TILESIZE;
+
       for (int j = 0; j < rows; ++j) // for each ray (indexed by final row)
 	{
 	  // restore context from arrays
@@ -73,8 +81,8 @@ void viewshed(const float * src, float * dst,
 	  float current_y = y + (i - x) * dy;
 	  float distance = (i - x) * dm;
 
-	  // extent ray TILESIZE pixels to the east
-	  for (int k = 0; k < TILESIZE; ++k, current_y += dy, distance += dm)
+	  // extend ray to the East
+	  for (int k = 0; k < width; ++k, current_y += dy, distance += dm)
 	    {
 	      int current_x = i + k;
 	      int index = xy_to_index(cols, current_x, (int)current_y);
@@ -92,7 +100,7 @@ void viewshed(const float * src, float * dst,
 	  alphas[j] = alpha;
 	}
     }
-  
+
   /* for (int i = 0; i < rows; ++i) */
   /*   { */
   /*     float dy, current_y, alpha; */
