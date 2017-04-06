@@ -37,6 +37,7 @@
 
 
 #define ALLOC(P,N) if (!(P = aligned_alloc(PAGESIZE, sizeof(float) * (N)))) { fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__); exit(-1); }
+#define LASTY(DY) ((int)(y + ((i - x + width) * (DY))))
 
 void viewshed(const float * src, float * dst,
 	      uint32_t cols, uint32_t rows,
@@ -74,30 +75,41 @@ void viewshed(const float * src, float * dst,
 
       for (int j = 0; j < rows; ++j) // for each ray (indexed by final row)
 	{
-	  // restore context from arrays
 	  float dy = dys[j];
-	  float dm = dms[j];
-	  float alpha = alphas[j];
-	  float current_y = y + (i - x) * dy;
-	  float distance = (i - x) * dm;
+	  int last_y = LASTY(dy);
 
-	  // extend ray to the East
-	  for (int k = 0; k < width; ++k, current_y += dy, distance += dm)
+	  // Minimize repeatedly-evaluating the same pixel by skipping
+	  // overlapping rays.  If the last y value of this ray-chunk
+	  // is the same as that of the next ray-chunk, then defer to
+	  // the latter.  Otherwise, if they are different, then
+	  // evaluate this ray chunk.
+	  if (j == rows-1 || last_y != LASTY(dys[j+1]))
 	    {
-	      int current_x = i + k;
-	      int index = xy_to_index(cols, current_x, (int)current_y);
-	      float elevation = src[index] - viewHeight;
-	      float angle = atan(elevation / distance);
+	      // restore context from arrays
+	      float dm = dms[j];
+	      float alpha = alphas[j];
+	      float current_y = y + (i - x) * dy;
+	      float distance = (i - x) * dm;
 
-	      if (alpha < angle)
+	      // extend ray to the East
+	      for (int k = 0; k < width; ++k, current_y += dy, distance += dm)
 		{
-		  alpha = angle;
-		  dst[index] = 1.0;
-		}
-	    }
+		  int current_x = i + k;
+		  int index = xy_to_index(cols, current_x, (int)current_y);
+		  float elevation = src[index] - viewHeight;
+		  float angle = atan(elevation / distance);
 
-	  // save context
-	  alphas[j] = alpha;
+		  if (alpha < angle)
+		    {
+		      alpha = angle;
+		      dst[index] = 1.0;
+		    }
+		}
+
+	      // save context for this ray and all that overlap it
+	      for (int k = j; last_y == LASTY(dys[k]); --k)
+	      	alphas[k] = alpha;
+	    }
 	}
     }
 
