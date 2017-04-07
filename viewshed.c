@@ -32,11 +32,22 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <immintrin.h>
 #include "rasterio.h"
 
 
 #define ALLOC(P,N) if (!(P = aligned_alloc(PAGESIZE, sizeof(float) * (N)))) { fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__); exit(-1); }
 #define LASTY(DY) ((int)(y + ((i - x + width) * (DY))))
+
+typedef float v8sf __attribute__ ((vector_size (sizeof(float) * REGISTERSIZE)));
+typedef int v8si __attribute__ ((vector_size (sizeof(int) * REGISTERSIZE)));
+/* typedef __m256 v8sf; */
+/* typedef __m256 v8si; */
+
+#ifndef __AVX__
+#define __AVX__ (0)
+#endif
+
 
 void viewshed(const float * src, float * dst,
 	      uint32_t cols, uint32_t rows,
@@ -55,6 +66,9 @@ void viewshed(const float * src, float * dst,
   ALLOC(dys, larger);
   ALLOC(dms, larger);
 
+  v8sf vmultipliers;
+  for (int k = 0; k < REGISTERSIZE; ++k) vmultipliers[k] = (float)k;
+
   // East
   for (int j = 0; j < larger; ++j)
     {
@@ -65,12 +79,12 @@ void viewshed(const float * src, float * dst,
   for (int i = x, width = 1; i < cols; i += width)
     {
       // Compute the width of this slice of columns.  Nominally
-      // TILESIZE, but may be something else on the first iteration in
+      // REGISTERSIZE, but may be something else on the first iteration in
       // order to get aligned with tiles/pages.
       if (i == x)
-	for (; (i + width) % TILESIZE; ++width);
+	for (; (i + width) % REGISTERSIZE; ++width);
       else
-	width = TILESIZE;
+	width = REGISTERSIZE;
 
       for (int j = 0; j < rows; ++j) // for each ray (indexed by final row)
 	{
@@ -90,21 +104,52 @@ void viewshed(const float * src, float * dst,
 	      float current_y = y + (i - x) * dy;
 	      float distance = (i - x) * dm;
 
-	      // extend ray to the East
-	      for (int k = 0; k < width; ++k, current_y += dy, distance += dm)
+	      // Extend ray to the East.  In the common case, use
+	      // vectors ...
+	      if (width == REGISTERSIZE && __AVX__)
 		{
-		  int current_x = i + k;
-		  int index = xy_to_index(cols, current_x, (int)current_y);
-		  float elevation = src[index] - viewHeight;
-		  float angle = elevation / distance;
+		  v8sf vcurrent_y;
+		  v8sf vdistance;
+		  v8sf velevation;
+		  v8sf vangle;
+		  v8si vindex;
 
-		  if (alpha < angle)
+		  vcurrent_y = __builtin_ia32_addps256(__builtin_ia32_mulps256(vmultipliers, __builtin_ia32_vbroadcastss256(&dy)), __builtin_ia32_vbroadcastss256(&current_y));
+		  vdistance = __builtin_ia32_addps256(__builtin_ia32_mulps256(vmultipliers, __builtin_ia32_vbroadcastss256(&dm)), __builtin_ia32_vbroadcastss256(&distance));
+		  for (int k = 0; k < REGISTERSIZE; ++k)
 		    {
-		      alpha = angle;
-		      dst[index] = 1.0;
+		      vindex[k] = xy_to_index(cols, (i + k), (int)vcurrent_y[k]);
+		      velevation[k] = src[vindex[k]];
+		    }
+		  velevation = __builtin_ia32_subps256(velevation, __builtin_ia32_vbroadcastss256(&viewHeight));
+		  vangle = __builtin_ia32_divps256(velevation, vdistance);
+		  for (int k = 0; k < REGISTERSIZE; ++k)
+		    {
+		      if (alpha < vangle[k])
+			{
+			  alpha = vangle[k];
+			  dst[vindex[k]] = 1.0;
+			}
 		    }
 		}
+	      // ... in the special case, use scalers.
+	      else
+		{
+		  for (int k = 0; k < width; ++k, current_y += dy, distance += dm)
+		    {
+		      int current_x = i + k;
+		      int index = xy_to_index(cols, current_x, (int)current_y);
+		      float elevation = src[index] - viewHeight;
+		      float angle = elevation / distance;
 
+		      if (alpha < angle)
+			{
+			  alpha = angle;
+			  dst[index] = 1.0;
+			}
+		    }
+		}
+	      
 	      // save context for this ray and all that overlap it
 	      for (int k = j; last_y == LASTY(dys[k]); --k)
 	      	alphas[k] = alpha;

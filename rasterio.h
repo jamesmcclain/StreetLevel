@@ -51,6 +51,7 @@
 #define SUBTILESIZE (1<<SUBTILEBITS)
 #define SUBTILEMASK (0x03)
 
+#define REGISTERSIZE (8)
 
 extern void init();
 extern void load(const char * filename,
