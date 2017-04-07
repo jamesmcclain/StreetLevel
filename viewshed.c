@@ -32,7 +32,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <math.h>
 #include "rasterio.h"
 
 
@@ -81,8 +80,8 @@ void viewshed(const float * src, float * dst,
 	  // Minimize repeatedly-evaluating the same pixel by skipping
 	  // overlapping rays.  If the last y value of this ray-chunk
 	  // is the same as that of the next ray-chunk, then defer to
-	  // the latter.  Otherwise, if they are different, then
-	  // evaluate this ray chunk.
+	  // the latter.  Otherwise, if they are different, evaluate
+	  // this chunk of rays.
 	  if (j == rows-1 || last_y != LASTY(dys[j+1]))
 	    {
 	      // restore context from arrays
@@ -97,7 +96,7 @@ void viewshed(const float * src, float * dst,
 		  int current_x = i + k;
 		  int index = xy_to_index(cols, current_x, (int)current_y);
 		  float elevation = src[index] - viewHeight;
-		  float angle = atan(elevation / distance);
+		  float angle = elevation / distance;
 
 		  if (alpha < angle)
 		    {

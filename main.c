@@ -57,7 +57,7 @@ int main(int argc, char ** argv)
   viewshed(src, dst, cols, rows, x_resolution(transform), y_resolution(transform));
   gettimeofday(&after, NULL);
   dump(argv[2], cols, rows, transform, projection, dst);
-  fprintf(stdout, "%d us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
+  fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
 
   free(src);
   free(dst);
