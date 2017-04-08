@@ -53,7 +53,6 @@ void load(const char * filename,
 	  float ** image)
 {
   GDALDatasetH dataset;
-  GDALDriverH driver;
   GDALRasterBandH band;
   const char * proj = NULL;
   float * tmp = NULL;
@@ -65,7 +64,6 @@ void load(const char * filename,
       fprintf(stderr, "Unable to open file %s %s:%d\n", filename, __FILE__, __LINE__);
       exit(-1);
     }
-  driver = GDALGetDatasetDriver(dataset); // GDAL driver
   band = GDALGetRasterBand(dataset, 1); // Get the first band
   if (GDALGetGeoTransform(dataset, transform) != CE_None) // Get the transform
     {
@@ -75,7 +73,7 @@ void load(const char * filename,
   if ((proj = GDALGetProjectionRef(dataset))) // Get the projection
     {
       int n = strlen(proj);
-      *projection = malloc(sizeof(char) * (n+1));
+      *projection = calloc(n+1, sizeof(char));
       strncpy(*projection, proj, n);
     }
 
@@ -113,7 +111,7 @@ void load(const char * filename,
       for (int j = 0; j < *rows; ++j)
 	{
 	  int src_index = j * *cols + i;
-	  int dst_index = xy_to_index(*cols, i, j);
+	  int dst_index = xy_to_fancy_index(*cols, i, j);
 	  (*image)[dst_index] = tmp[src_index];
 	}
     }
@@ -131,22 +129,6 @@ void dump(const char * filename,
   GDALDatasetH dataset;
   GDALDriverH driver;
   GDALRasterBandH band;
-  float * tmp = NULL;
-
-  if (!(tmp = (float *) CPLMalloc(sizeof(float) * cols * rows))) // Untiled image
-    {
-      fprintf(stderr, "CPLMalloc failed %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
-  for (int i = 0; i < cols; ++i) // Copy tiled data into untiled image
-    {
-      for (int j = 0; j < rows; ++j)
-  	{
-  	  int dst_index = j * cols + i;
-  	  int src_index = xy_to_index(cols, i, j);
-  	  tmp[dst_index] = image[src_index];
-  	}
-    }
 
   driver = GDALGetDriverByName("GTiff");
   if (!driver)
@@ -166,7 +148,7 @@ void dump(const char * filename,
   if (GDALRasterIO(band, GF_Write,
 		   0, 0,
 		   cols, rows,
-		   tmp,
+		   image,
 		   cols, rows,
 		   GDT_Float32,
 		   0, 0))
@@ -176,7 +158,6 @@ void dump(const char * filename,
     }
 
   GDALClose(dataset);
-  CPLFree(tmp);
 }
 
 double x_resolution(const double * transform)
@@ -189,22 +170,13 @@ double y_resolution(const double * transform)
   return -transform[5] / 2.0;
 }
 
-uint32_t xy_to_index(uint32_t cols, uint32_t x, uint32_t y)
+uint32_t xy_to_fancy_index(uint32_t cols, uint32_t x, uint32_t y)
 {
   int tile_row_words = cols * TILESIZE; // words per row of tiles
   int tile_x = x >> TILEBITS; // column of tile that (x,y) is in
   int tile_y = y >> TILEBITS; // row of tile that (x,y) is in
   int major_index = (tile_y * tile_row_words) + (tile_x * TILESIZE * TILESIZE); // index of tile
 
-#if 0
-  int minor_row_words = TILESIZE;
-  int minor_x = x & TILEMASK;
-  int minor_y = y & TILEMASK;
-  int minor_index = (minor_y * minor_row_words) + minor_x;
-
-  return major_index + minor_index;
-#endif
-  
   int subtile_row_words = TILESIZE * SUBTILESIZE; // words per row of subtiles
   int subtile_x = (x & TILEMASK) >> SUBTILEBITS; // column of subtile (within tile) that (x,y) is in
   int subtile_y = (y & TILEMASK) >> SUBTILEBITS; // row of subtile that (x,y) is in
@@ -216,4 +188,9 @@ uint32_t xy_to_index(uint32_t cols, uint32_t x, uint32_t y)
   int micro_index = (micro_y * micro_row_words) + micro_x;
 
   return major_index + minor_index + micro_index;
+}
+
+uint32_t xy_to_vanilla_index(uint32_t cols, uint32_t x, uint32_t y)
+{
+  return (y*cols) + x;
 }

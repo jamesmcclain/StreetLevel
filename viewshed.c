@@ -38,6 +38,7 @@
 #define ALLOC(P,N) if (!(P = aligned_alloc(PAGESIZE, sizeof(float) * (N)))) { fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__); exit(-1); }
 #define LASTY(DY) ((int)(y + ((i - x + width) * (DY))))
 
+
 void viewshed(const float * src, float * dst,
 	      uint32_t cols, uint32_t rows,
 	      double xres, double yres)
@@ -67,145 +68,48 @@ void viewshed(const float * src, float * dst,
       // Compute the width of this slice of columns.  Nominally
       // TILESIZE, but may be something else on the first iteration in
       // order to get aligned with tiles/pages.
-      if (i == x)
-	for (; (i + width) % TILESIZE; ++width);
-      else
-	width = TILESIZE;
+      if (i == x) { for (; (i + width) % TILESIZE; ++width); } else { width = TILESIZE; }
 
       for (int j = 0; j < rows; ++j) // for each ray (indexed by final row)
 	{
-	  float dy = dys[j];
-	  int last_y = LASTY(dy);
+	  float __attribute__ ((aligned)) dy = dys[j];
+	  int __attribute__ ((aligned)) last_y = LASTY(dy);
 
-	  // Minimize repeatedly-evaluating the same pixel by skipping
-	  // overlapping rays.  If the last y value of this ray-chunk
-	  // is the same as that of the next ray-chunk, then defer to
-	  // the latter.  Otherwise, if they are different, evaluate
-	  // this chunk of rays.
+	  // Minimize repeatedly-evaluation of the same pixel by
+	  // skipping overlapping rays.  If the last y value of this
+	  // ray-chunk is the same as that of the next ray-chunk, then
+	  // defer to the latter.  Otherwise, if they are different,
+	  // evaluate this chunk of the ray.
 	  if (j == rows-1 || last_y != LASTY(dys[j+1]))
 	    {
 	      // restore context from arrays
-	      float dm = dms[j];
-	      float alpha = alphas[j];
-	      float current_y = y + (i - x) * dy;
-	      float distance = (i - x) * dm;
+	      float __attribute__ ((aligned)) dm = dms[j];
+	      float __attribute__ ((aligned)) alpha = alphas[j];
+	      float __attribute__ ((aligned)) current_y = y + (i - x) * dy;
+	      float __attribute__ ((aligned)) current_distance = (i - x) * dm;
 
-	      // extend ray to the East
-	      for (int k = 0; k < width; ++k, current_y += dy, distance += dm)
+	      for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
 		{
 		  int current_x = i + k;
-		  int index = xy_to_index(cols, current_x, (int)current_y);
-		  float elevation = src[index] - viewHeight;
-		  float angle = elevation / distance;
+		  int fancy_index = xy_to_fancy_index(cols, current_x, (int)current_y);
+		  float elevation = src[fancy_index] - viewHeight;
+		  float angle = elevation / current_distance;
 
 		  if (alpha < angle)
 		    {
+		      int index = xy_to_vanilla_index(cols, (i + k), (int)current_y);
 		      alpha = angle;
 		      dst[index] = 1.0;
 		    }
 		}
-
+	      
 	      // save context for this ray and all that overlap it
-	      for (int k = j; last_y == LASTY(dys[k]); --k)
-	      	alphas[k] = alpha;
+	      for (int k = j; (k >= 0) && (last_y == LASTY(dys[k])); --k) alphas[k] = alpha;
 	    }
 	}
     }
 
-  /* for (int i = 0; i < rows; ++i) */
-  /*   { */
-  /*     float dy, current_y, alpha; */
-
-  /*     // east */
-  /*     dy = ((float)(i - y))/x; */
-  /*     current_y = y; */
-  /*     alpha = -INFINITY; */
-  /*     for (int j = x; j < cols; j += TILESIZE) */
-  /* 	{ */
-  /* 	  for (int k = 0; k < TILESIZE; ++k) */
-  /* 	    { */
-  /* 	    } */
-  /* 	} */
-      
-  /*     for (int current_x = x; current_x < cols; ++current_x, current_y += dy) */
-  /* 	{ */
-  /* 	  int index = xy_to_index(cols, current_x, (int)current_y); */
-  /* 	  float xchange = xres * (current_x - x); */
-  /* 	  float ychange = yres * (current_y - y); */
-  /* 	  float distance = sqrt(xchange*xchange + ychange*ychange); */
-  /* 	  float elevation = src[index] - viewHeight; */
-  /* 	  float angle = atan(elevation / distance); */
-
-  /* 	  if (alpha <= angle) */
-  /* 	    { */
-  /* 	      alpha = angle; */
-  /* 	      dst[index] = 1.0; */
-  /* 	    } */
-  /* 	} */
-
-      /* // west */
-      /* dy = ((float)(i - y))/(cols - x); */
-      /* current_y = y; */
-      /* alpha = -INFINITY; */
-      /* for (int current_x = x; current_x >= 0; --current_x, current_y += dy) */
-      /* 	{ */
-      /* 	  int index = xy_to_index(cols, current_x, (int)current_y); */
-      /* 	  float xchange = xres * (current_x - x); */
-      /* 	  float ychange = yres * (current_y - y); */
-      /* 	  float distance = sqrt(xchange*xchange + ychange*ychange); */
-      /* 	  float elevation = src[index] - viewHeight; */
-      /* 	  float angle = atan(elevation / distance); */
-
-      /* 	  if (alpha <= angle) */
-      /* 	    { */
-      /* 	      alpha = angle; */
-      /* 	      dst[index] = 1.0; */
-      /* 	    } */
-      /* 	} */
-    /* } */
-  
-  /* for (int i = 0; i < cols; ++i) */
-  /*   { */
-  /*     float dx, current_x, alpha; */
-      
-  /*     // north */
-  /*     dx = ((float)(i - x))/y; */
-  /*     current_x = x; */
-  /*     alpha = -INFINITY; */
-  /*     for (int current_y = y; current_y >= 0; --current_y, current_x += dx) */
-  /* 	{ */
-  /* 	  int index = xy_to_index(cols, (int)current_x, current_y); */
-  /* 	  float xchange = xres * (current_x - x); */
-  /* 	  float ychange = yres * (current_y - y); */
-  /* 	  float distance = sqrt(xchange*xchange + ychange*ychange); */
-  /* 	  float elevation = src[index] - viewHeight; */
-  /* 	  float angle = atan(elevation / distance); */
-
-  /* 	  if (alpha <= angle) */
-  /* 	    { */
-  /* 	      alpha = angle; */
-  /* 	      dst[index] = 1.0; */
-  /* 	    } */
-  /* 	} */
-
-  /*     // south */
-  /*     dx = ((float)(i - x))/(rows - y); */
-  /*     current_x = x; */
-  /*     alpha = -INFINITY; */
-  /*     for (int current_y = y; current_y < rows; ++current_y, current_x += dx) */
-  /* 	{ */
-  /* 	  int index = xy_to_index(cols, (int)current_x, current_y); */
-  /* 	  float xchange = xres * (current_x - x); */
-  /* 	  float ychange = yres * (current_y - y); */
-  /* 	  float distance = sqrt(xchange*xchange + ychange*ychange); */
-  /* 	  float elevation = src[index] - viewHeight; */
-  /* 	  float angle = atan(elevation / distance); */
-
-  /* 	  if (alpha <= angle) */
-  /* 	    { */
-  /* 	      alpha = angle; */
-  /* 	      dst[index] = 1.0; */
-  /* 	    } */
-  /* 	} */
-  /*   } */
+  free(alphas);
+  free(dys);
+  free(dms);
 }

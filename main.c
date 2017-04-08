@@ -59,6 +59,7 @@ int main(int argc, char ** argv)
   dump(argv[2], cols, rows, transform, projection, dst);
   fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
 
+  free(projection);
   free(src);
   free(dst);
 
