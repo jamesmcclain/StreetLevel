@@ -95,7 +95,7 @@ void viewshed(const float * src, float * dst,
 	      float __attribute__ ((aligned)) current_y = y + (i - x) * dy;
 	      float __attribute__ ((aligned)) current_distance = (i - x) * dm;
 
-#if __AVX__
+#ifdef __AVX__
 	      // Extend ray to the East.  In the common case, use
 	      // vectors ...
 	      if (width == TILESIZE)
@@ -105,48 +105,24 @@ void viewshed(const float * src, float * dst,
 		  floatv distance;
 		  floatv elevation;
 		  floatv angle;
-		  floatv temp1;
-		  floatv temp2;
-		  floatv temp3;
-		  floatv temp4;
 
 		  for (int k = 0; k < TILESIZE; k+= REGISTERSIZE)
 		    {
-		    /*   mults = __builtin_ia32_loadups256(multipliers + k); */
-		      for (int l = 0; l < REGISTERSIZE; ++l)
-			{
-			  mults[l] = multipliers[k + l];
-			  temp1[l] = current_y;
-			  temp2[l] = dy;
-			  temp3[l] = current_distance;
-			  temp4[l] = dm;
-			}
-
-		    /*   y = __builtin_ia32_addps256(__builtin_ia32_mulps256(mults, __builtin_ia32_vbroadcastss256(&dy)), __builtin_ia32_vbroadcastss256(&current_y)); */
-		      ys = (temp2 * mults) + temp1;
+		      mults = __builtin_ia32_loadups256(multipliers + k);
+		      ys = __builtin_ia32_addps256(__builtin_ia32_mulps256(mults, __builtin_ia32_vbroadcastss256(&dy)), __builtin_ia32_vbroadcastss256(&current_y));
 		      for (int l = 0; l < REGISTERSIZE; ++l)
 			{
 			  int fancy_index = xy_to_fancy_index(cols, (i + k + l), (int)ys[l]);
 			  elevation[l] = src[fancy_index] - viewHeight;
 			}
-		    /*   distance = __builtin_ia32_addps256(__builtin_ia32_mulps256(mults, __builtin_ia32_vbroadcastss256(&dm)), __builtin_ia32_vbroadcastss256(&current_distance)); */
-		      distance = (temp4 * mults) + temp3;
-		    /*   angle = __builtin_ia32_divps256(elevation, distance); */
-		      angle = elevation / distance;
-		      /* if (i == 5440 && j == 6143) // XXX */
-		      /* 	{ */
-		      /* 	  for (int l = 0; l < REGISTERSIZE; ++l) */
-		      /* 	    { */
-		      /* 	      fprintf(stderr, "VECTOR: %d %d y=%lf elevation=%lf distance=%lf angle=%lf\n", l, i + k + l, ys[l], elevation[l], distance[l], angle[l]); */
-		      /* 	    } */
-		      /* 	} */
+		      distance = __builtin_ia32_addps256(__builtin_ia32_mulps256(mults, __builtin_ia32_vbroadcastss256(&dm)), __builtin_ia32_vbroadcastss256(&current_distance));
+		      angle = __builtin_ia32_divps256(elevation, distance);
 
 		      for (int l = 0; l < REGISTERSIZE; ++l)
 		    	{
 		    	  if (alpha < angle[l])
 		    	    {
 			      int index = xy_to_vanilla_index(cols, (i + k + l), (int)ys[l]);
-			      if (i == 5440 && j == 6143) fprintf(stderr, "VECTOR: %d %d %f %f\n", l, index, alpha, angle[l]); // XXX
 		    	      alpha = angle[l];
 		    	      dst[index] = 1.0;
 		    	    }
@@ -163,15 +139,10 @@ void viewshed(const float * src, float * dst,
 		      int fancy_index = xy_to_fancy_index(cols, current_x, (int)current_y);
 		      float elevation = src[fancy_index] - viewHeight;
 		      float angle = elevation / current_distance;
-		      /* if (i == 5440 && j == 6143) */
-		      /* 	{ */
-		      /* 	  fprintf(stderr, "SCALER: %d %d y=%lf elevation=%lf distance=%lf angle=%lf\n", k, current_x, current_y, elevation, current_distance, angle); */
-		      /* 	} */
 
 		      if (alpha < angle)
 			{
 			  int index = xy_to_vanilla_index(cols, (i + k), (int)current_y);
-			  if (i == 5440 && j == 6143) fprintf(stderr, "SCALER: %d %d %f %f\n", k, index, alpha, angle); // XXX
 			  alpha = angle;
 			  dst[index] = 1.0;
 			}
