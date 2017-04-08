@@ -36,80 +36,133 @@
 
 
 #define ALLOC(P,N) if (!(P = aligned_alloc(PAGESIZE, sizeof(float) * (N)))) { fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__); exit(-1); }
-#define LASTY(DY) ((int)(y + ((i - x + width) * (DY))))
+#define LASTY(DY) ((int)(y + ((ix + width) * (DY))))
+#define BADDIR() { fprintf(stderr, "Bad direction %s:%d\n", __FILE__, __LINE__); exit(-1); }
+
+typedef enum direction {EAST, NORTH, WEST, SOUTH} Direction;
 
 
-void viewshed(const float * src, float * dst,
-	      uint32_t cols, uint32_t rows,
-	      double xres, double yres)
+void viewshed_aux(const float * src, float * dst,
+                  int cols, int rows,
+                  int x, int y, float viewHeight,
+                  double xres, double yres,
+                  Direction dir)
 {
   float * alphas = NULL;
   float * dys = NULL;
   float * dms = NULL;
   int larger = (cols > rows ? cols : rows);
+  int plus_minus;
+  int true_cols = cols;
 
-  int x = 4608; // XXX
-  int y = 3072; // XXX
-  float viewHeight = 2000; // XXX
+  // If northern or southern wedges, transpose.
+  if (dir == SOUTH || dir == NORTH)
+    {
+      int temp1;
+      float temp2;
+
+      temp1 = x, x = y, y = temp1;
+      temp1 = cols, cols = rows, rows = temp1;
+      temp2 = xres, xres = yres, yres = xres;
+    }
 
   ALLOC(alphas, larger);
   ALLOC(dys, larger);
   ALLOC(dms, larger);
 
-  // East
-  for (int j = 0; j < larger; ++j)
+  if (dir == EAST || dir == SOUTH) plus_minus = 1;
+  else if (dir == WEST || dir == NORTH) plus_minus = -1;
+  else BADDIR();
+
+  for (int j = 0; j < rows; ++j)
     {
-      dys[j] = ((float)(j - y))/x;
+      if (dir == EAST || dir == SOUTH) dys[j] = ((float)(j - y))/(cols - x);
+      else if (dir == WEST || dir == NORTH) dys[j] = ((float)(j - y))/x;
+      else BADDIR();
       dms[j] = sqrt((1*xres)*(1*xres) + (dys[j]*yres)*(dys[j]*yres));
       alphas[j] = -INFINITY;
     }
-  for (int i = x, width = 1; i < cols; i += width)
+
+  for (int i = x, width = 1; (i < cols) && (i > 0); i += plus_minus * width)
     {
+      int ix;
+
+      if (dir == EAST || dir == SOUTH) ix = i - x;
+      else if (dir == WEST || dir == NORTH) ix = x - i;
+      else BADDIR();
+
       // Compute the width of this slice of columns.  Nominally
       // TILESIZE, but may be something else on the first iteration in
       // order to get aligned with tiles/pages.
       if (i == x) { for (; (i + width) % TILESIZE; ++width); } else { width = TILESIZE; }
 
       for (int j = 0; j < rows; ++j) // for each ray (indexed by final row)
-	{
-	  float __attribute__ ((aligned)) dy = dys[j];
-	  int __attribute__ ((aligned)) last_y = LASTY(dy);
+        {
+          float __attribute__ ((aligned)) dy = dys[j];
+          int __attribute__ ((aligned)) last_y = LASTY(dy);
 
-	  // Minimize repeatedly-evaluation of the same pixel by
-	  // skipping overlapping rays.  If the last y value of this
-	  // ray-chunk is the same as that of the next ray-chunk, then
-	  // defer to the latter.  Otherwise, if they are different,
-	  // evaluate this chunk of the ray.
-	  if (j == rows-1 || last_y != LASTY(dys[j+1]))
-	    {
-	      // restore context from arrays
-	      float __attribute__ ((aligned)) dm = dms[j];
-	      float __attribute__ ((aligned)) alpha = alphas[j];
-	      float __attribute__ ((aligned)) current_y = y + (i - x) * dy;
-	      float __attribute__ ((aligned)) current_distance = (i - x) * dm;
+          // Minimize repeatedly-evaluation of the same pixel by
+          // skipping overlapping rays.  If the last y value of this
+          // ray-chunk is the same as that of the next ray-chunk, then
+          // defer to the latter.  Otherwise, if they are different,
+          // evaluate this chunk of the ray.
+          if (j == rows-1 || last_y != LASTY(dys[j+1]))
+            {
+              // restore context from arrays
+              float __attribute__ ((aligned)) dm = dms[j];
+              float __attribute__ ((aligned)) alpha = alphas[j];
+              float __attribute__ ((aligned)) current_y = y + ix * dy;
+              float __attribute__ ((aligned)) current_distance = ix * dm;
 
-	      for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
-		{
-		  int current_x = i + k;
-		  int fancy_index = xy_to_fancy_index(cols, current_x, (int)current_y);
-		  float elevation = src[fancy_index] - viewHeight;
-		  float angle = elevation / current_distance;
+              for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
+                {
+                  int current_x;
+                  if (dir == EAST || dir == SOUTH) current_x = i + k;
+                  else if (dir == WEST || dir == NORTH) current_x = i - k;
+                  else BADDIR();
 
-		  if (alpha < angle)
-		    {
-		      int index = xy_to_vanilla_index(cols, (i + k), (int)current_y);
-		      alpha = angle;
-		      dst[index] = 1.0;
-		    }
-		}
-	      
-	      // save context for this ray and all that overlap it
-	      for (int k = j; (k >= 0) && (last_y == LASTY(dys[k])); --k) alphas[k] = alpha;
-	    }
-	}
+                  int fancy_index;
+                  if (dir == EAST || dir == WEST)
+                    fancy_index = xy_to_fancy_index(true_cols, current_x, (int)current_y);
+                  else if (dir == SOUTH || dir == NORTH)
+                    fancy_index = xy_to_fancy_index(true_cols, (int)current_y, current_x);
+                  else BADDIR();
+
+                  float elevation = src[fancy_index] - viewHeight;
+                  float angle = elevation / current_distance;
+
+                  if (alpha < angle)
+                    {
+                      int index;
+                      if (dir == EAST || dir == WEST)
+                        index = xy_to_vanilla_index(true_cols, current_x, (int)current_y);
+                      else if (dir == SOUTH || dir == NORTH)
+                        index = xy_to_vanilla_index(true_cols, (int)current_y, current_x);
+                      else BADDIR();
+
+                      alpha = angle;
+                      dst[index] = 1.0;
+                    }
+                }
+
+              // save context for this ray and all that overlap it
+              for (int k = j; (k >= 0) && (last_y == LASTY(dys[k])); --k) alphas[k] = alpha;
+            }
+        }
     }
 
   free(alphas);
   free(dys);
   free(dms);
+}
+
+void viewshed(const float * src, float * dst,
+              int cols, int rows,
+              int x, int y, float z,
+              double xres, double yres)
+{
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, EAST);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, SOUTH);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, WEST);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, NORTH);
 }
