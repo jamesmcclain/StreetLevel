@@ -36,7 +36,8 @@
 
 
 #define ALLOC(P,N) if (!(P = aligned_alloc(PAGESIZE, sizeof(float) * (N)))) { fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__); exit(-1); }
-#define LASTY(DY) ((int)(y + ((i - x + width - 1) * (DY))))
+#define LASTY(DY) ((int)(y + ((ix + width) * (DY))))
+#define BADDIR() { fprintf(stderr, "Bad direction %s:%d\n", __FILE__, __LINE__); exit(-1); }
 
 typedef enum direction {EAST, NORTH, WEST, SOUTH} Direction;
 
@@ -45,18 +46,20 @@ void viewshed(const float * src, float * dst,
               uint32_t cols, uint32_t rows,
               double xres, double yres)
 {
-  viewshed_wedge(src, dst, cols, rows, xres, yres, EAST);
+  viewshed_aux(src, dst, cols, rows, xres, yres, EAST);
+  viewshed_aux(src, dst, cols, rows, xres, yres, WEST);
 }
 
-void viewshed_wedge(const float * src, float * dst,
-                    uint32_t cols, uint32_t rows,
-                    double xres, double yres,
-                    Direction dir)
+void viewshed_aux(const float * src, float * dst,
+                   uint32_t cols, uint32_t rows,
+                  double xres, double yres,
+                  Direction dir)
 {
   float * alphas = NULL;
   float * dys = NULL;
   float * dms = NULL;
   int larger = (cols > rows ? cols : rows);
+  int plus_minus;
 
   int x = 4608; // XXX
   int y = 3072; // XXX
@@ -66,15 +69,26 @@ void viewshed_wedge(const float * src, float * dst,
   ALLOC(dys, larger);
   ALLOC(dms, larger);
 
-  // East
+  if (dir == EAST) plus_minus = 1;
+  else if (dir == WEST) plus_minus = -1;
+  else BADDIR();
+
   for (int j = 0; j < larger; ++j)
     {
-      dys[j] = ((float)(j - y))/x;
+      if (dir == EAST) dys[j] = ((float)(j - y))/(cols - x);
+      else if (dir == WEST) dys[j] = ((float)(j - y))/x;
+      else BADDIR();
       dms[j] = sqrt((1*xres)*(1*xres) + (dys[j]*yres)*(dys[j]*yres));
       alphas[j] = -INFINITY;
     }
-  for (int i = x, width = 1; i < cols; i += width)
+  for (int i = x, width = 1; (i < cols) && (i >= 0); i += plus_minus * width)
     {
+      int ix;
+
+      if (dir == EAST) ix = i - x;
+      else if (dir == WEST) ix = x - i;
+      else BADDIR();
+
       // Compute the width of this slice of columns.  Nominally
       // TILESIZE, but may be something else on the first iteration in
       // order to get aligned with tiles/pages.
@@ -95,24 +109,28 @@ void viewshed_wedge(const float * src, float * dst,
               // restore context from arrays
               float __attribute__ ((aligned)) dm = dms[j];
               float __attribute__ ((aligned)) alpha = alphas[j];
-              float __attribute__ ((aligned)) current_y = y + (i - x) * dy;
-              float __attribute__ ((aligned)) current_distance = (i - x) * dm;
+              float __attribute__ ((aligned)) current_y = y + ix * dy;
+              float __attribute__ ((aligned)) current_distance = ix * dm;
 
               for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
                 {
                   int current_x = i + k;
+                  if (dir == EAST) current_x = i + k;
+                  else if (dir == WEST) current_x = i - k;
+                  else BADDIR();
+
                   int fancy_index = xy_to_fancy_index(cols, current_x, (int)current_y);
                   float elevation = src[fancy_index] - viewHeight;
                   float angle = elevation / current_distance;
 
                   if (alpha < angle)
                     {
-                      int index = xy_to_vanilla_index(cols, (i + k), (int)current_y);
+                      int index = xy_to_vanilla_index(cols, current_x, (int)current_y);
                       alpha = angle;
                       dst[index] = 1.0;
                     }
                 }
-              
+
               // save context for this ray and all that overlap it
               for (int k = j; (k >= 0) && (last_y == LASTY(dys[k])); --k) alphas[k] = alpha;
             }
