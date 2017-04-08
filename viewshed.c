@@ -39,14 +39,8 @@
 #define ALLOC(P,N) if (!(P = aligned_alloc(PAGESIZE, sizeof(float) * (N)))) { fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__); exit(-1); }
 #define LASTY(DY) ((int)(y + ((i - x + width) * (DY))))
 
-typedef float v8sf __attribute__ ((vector_size (sizeof(float) * REGISTERSIZE)));
-typedef int v8si __attribute__ ((vector_size (sizeof(int) * REGISTERSIZE)));
-/* typedef __m256 v8sf; */
-/* typedef __m256 v8si; */
-
-#ifndef __AVX__
-#define __AVX__ (0)
-#endif
+typedef float floatv __attribute__ ((vector_size (sizeof(float) * REGISTERSIZE))) __attribute__ ((aligned));
+typedef int intv __attribute__ ((vector_size (sizeof(int) * REGISTERSIZE))) __attribute__ ((aligned));
 
 
 void viewshed(const float * src, float * dst,
@@ -57,6 +51,7 @@ void viewshed(const float * src, float * dst,
   float * dys = NULL;
   float * dms = NULL;
   int larger = (cols > rows ? cols : rows);
+  float multipliers[TILESIZE];
 
   int x = 4608; // XXX
   int y = 3072; // XXX
@@ -66,8 +61,7 @@ void viewshed(const float * src, float * dst,
   ALLOC(dys, larger);
   ALLOC(dms, larger);
 
-  v8sf vmultipliers;
-  for (int k = 0; k < REGISTERSIZE; ++k) vmultipliers[k] = (float)k;
+  for (int k = 0; k < TILESIZE; ++k) multipliers[k] = (float)k;
 
   // East
   for (int j = 0; j < larger; ++j)
@@ -79,71 +73,105 @@ void viewshed(const float * src, float * dst,
   for (int i = x, width = 1; i < cols; i += width)
     {
       // Compute the width of this slice of columns.  Nominally
-      // REGISTERSIZE, but may be something else on the first iteration in
+      // TILESIZE, but may be something else on the first iteration in
       // order to get aligned with tiles/pages.
-      if (i == x)
-	for (; (i + width) % REGISTERSIZE; ++width);
-      else
-	width = REGISTERSIZE;
+      if (i == x) { for (; (i + width) % TILESIZE; ++width); } else { width = TILESIZE; }
 
       for (int j = 0; j < rows; ++j) // for each ray (indexed by final row)
 	{
-	  float dy = dys[j];
-	  int last_y = LASTY(dy);
+	  float __attribute__ ((aligned)) dy = dys[j];
+	  int __attribute__ ((aligned)) last_y = LASTY(dy);
 
-	  // Minimize repeatedly-evaluating the same pixel by skipping
-	  // overlapping rays.  If the last y value of this ray-chunk
-	  // is the same as that of the next ray-chunk, then defer to
-	  // the latter.  Otherwise, if they are different, evaluate
-	  // this chunk of rays.
+	  // Minimize repeatedly-evaluation of the same pixel by
+	  // skipping overlapping rays.  If the last y value of this
+	  // ray-chunk is the same as that of the next ray-chunk, then
+	  // defer to the latter.  Otherwise, if they are different,
+	  // evaluate this chunk of the ray.
 	  if (j == rows-1 || last_y != LASTY(dys[j+1]))
 	    {
 	      // restore context from arrays
-	      float dm = dms[j];
-	      float alpha = alphas[j];
-	      float current_y = y + (i - x) * dy;
-	      float distance = (i - x) * dm;
+	      float __attribute__ ((aligned)) dm = dms[j];
+	      float __attribute__ ((aligned)) alpha = alphas[j];
+	      float __attribute__ ((aligned)) current_y = y + (i - x) * dy;
+	      float __attribute__ ((aligned)) current_distance = (i - x) * dm;
 
+#if __AVX__
 	      // Extend ray to the East.  In the common case, use
 	      // vectors ...
-	      if (width == REGISTERSIZE && __AVX__)
+	      if (width == TILESIZE)
 		{
-		  v8sf vcurrent_y;
-		  v8sf vdistance;
-		  v8sf velevation;
-		  v8sf vangle;
-		  v8si vindex;
+		  floatv mults;
+		  floatv ys;
+		  floatv distance;
+		  floatv elevation;
+		  floatv angle;
+		  floatv temp1;
+		  floatv temp2;
+		  floatv temp3;
+		  floatv temp4;
 
-		  vcurrent_y = __builtin_ia32_addps256(__builtin_ia32_mulps256(vmultipliers, __builtin_ia32_vbroadcastss256(&dy)), __builtin_ia32_vbroadcastss256(&current_y));
-		  vdistance = __builtin_ia32_addps256(__builtin_ia32_mulps256(vmultipliers, __builtin_ia32_vbroadcastss256(&dm)), __builtin_ia32_vbroadcastss256(&distance));
-		  for (int k = 0; k < REGISTERSIZE; ++k)
+		  for (int k = 0; k < TILESIZE; k+= REGISTERSIZE)
 		    {
-		      vindex[k] = xy_to_index(cols, (i + k), (int)vcurrent_y[k]);
-		      velevation[k] = src[vindex[k]];
-		    }
-		  velevation = __builtin_ia32_subps256(velevation, __builtin_ia32_vbroadcastss256(&viewHeight));
-		  vangle = __builtin_ia32_divps256(velevation, vdistance);
-		  for (int k = 0; k < REGISTERSIZE; ++k)
-		    {
-		      if (alpha < vangle[k])
+		    /*   mults = __builtin_ia32_loadups256(multipliers + k); */
+		      for (int l = 0; l < REGISTERSIZE; ++l)
 			{
-			  alpha = vangle[k];
-			  dst[vindex[k]] = 1.0;
+			  mults[l] = multipliers[k + l];
+			  temp1[l] = current_y;
+			  temp2[l] = dy;
+			  temp3[l] = current_distance;
+			  temp4[l] = dm;
 			}
+
+		    /*   y = __builtin_ia32_addps256(__builtin_ia32_mulps256(mults, __builtin_ia32_vbroadcastss256(&dy)), __builtin_ia32_vbroadcastss256(&current_y)); */
+		      ys = (temp2 * mults) + temp1;
+		      for (int l = 0; l < REGISTERSIZE; ++l)
+			{
+			  int fancy_index = xy_to_fancy_index(cols, (i + k + l), (int)ys[l]);
+			  elevation[l] = src[fancy_index] - viewHeight;
+			}
+		    /*   distance = __builtin_ia32_addps256(__builtin_ia32_mulps256(mults, __builtin_ia32_vbroadcastss256(&dm)), __builtin_ia32_vbroadcastss256(&current_distance)); */
+		      distance = (temp4 * mults) + temp3;
+		    /*   angle = __builtin_ia32_divps256(elevation, distance); */
+		      angle = elevation / distance;
+		      /* if (i == 5440 && j == 6143) // XXX */
+		      /* 	{ */
+		      /* 	  for (int l = 0; l < REGISTERSIZE; ++l) */
+		      /* 	    { */
+		      /* 	      fprintf(stderr, "VECTOR: %d %d y=%lf elevation=%lf distance=%lf angle=%lf\n", l, i + k + l, ys[l], elevation[l], distance[l], angle[l]); */
+		      /* 	    } */
+		      /* 	} */
+
+		      for (int l = 0; l < REGISTERSIZE; ++l)
+		    	{
+		    	  if (alpha < angle[l])
+		    	    {
+			      int index = xy_to_vanilla_index(cols, (i + k + l), (int)ys[l]);
+			      if (i == 5440 && j == 6143) fprintf(stderr, "VECTOR: %d %d %f %f\n", l, index, alpha, angle[l]); // XXX
+		    	      alpha = angle[l];
+		    	      dst[index] = 1.0;
+		    	    }
+		    	}
 		    }
 		}
 	      // ... in the special case, use scalers.
 	      else
+#endif
 		{
-		  for (int k = 0; k < width; ++k, current_y += dy, distance += dm)
+		  for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
 		    {
 		      int current_x = i + k;
-		      int index = xy_to_index(cols, current_x, (int)current_y);
-		      float elevation = src[index] - viewHeight;
-		      float angle = elevation / distance;
+		      int fancy_index = xy_to_fancy_index(cols, current_x, (int)current_y);
+		      float elevation = src[fancy_index] - viewHeight;
+		      float angle = elevation / current_distance;
+		      /* if (i == 5440 && j == 6143) */
+		      /* 	{ */
+		      /* 	  fprintf(stderr, "SCALER: %d %d y=%lf elevation=%lf distance=%lf angle=%lf\n", k, current_x, current_y, elevation, current_distance, angle); */
+		      /* 	} */
 
 		      if (alpha < angle)
 			{
+			  int index = xy_to_vanilla_index(cols, (i + k), (int)current_y);
+			  if (i == 5440 && j == 6143) fprintf(stderr, "SCALER: %d %d %f %f\n", k, index, alpha, angle); // XXX
 			  alpha = angle;
 			  dst[index] = 1.0;
 			}
@@ -151,8 +179,7 @@ void viewshed(const float * src, float * dst,
 		}
 	      
 	      // save context for this ray and all that overlap it
-	      for (int k = j; last_y == LASTY(dys[k]); --k)
-	      	alphas[k] = alpha;
+	      for (int k = j; last_y == LASTY(dys[k]); --k) alphas[k] = alpha;
 	    }
 	}
     }

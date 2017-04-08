@@ -66,6 +66,7 @@ extern void dump(const char * filename,
 		 const float * image);
 extern double x_resolution(const double * transform);
 extern double y_resolution(const double * transform);
-extern uint32_t xy_to_index(uint32_t cols, uint32_t x, uint32_t y);
+extern uint32_t xy_to_fancy_index(uint32_t cols, uint32_t x, uint32_t y);
+extern uint32_t xy_to_vanilla_index(uint32_t cols, uint32_t x, uint32_t y);
 
 #endif
