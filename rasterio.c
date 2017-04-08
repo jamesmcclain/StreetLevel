@@ -53,7 +53,6 @@ void load(const char * filename,
 	  float ** image)
 {
   GDALDatasetH dataset;
-  GDALDriverH driver;
   GDALRasterBandH band;
   const char * proj = NULL;
   float * tmp = NULL;
@@ -65,7 +64,6 @@ void load(const char * filename,
       fprintf(stderr, "Unable to open file %s %s:%d\n", filename, __FILE__, __LINE__);
       exit(-1);
     }
-  driver = GDALGetDatasetDriver(dataset); // GDAL driver
   band = GDALGetRasterBand(dataset, 1); // Get the first band
   if (GDALGetGeoTransform(dataset, transform) != CE_None) // Get the transform
     {

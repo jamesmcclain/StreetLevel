@@ -47,7 +47,6 @@ void viewshed(const float * src, float * dst,
   float * dys = NULL;
   float * dms = NULL;
   int larger = (cols > rows ? cols : rows);
-  float multipliers[TILESIZE];
 
   int x = 4608; // XXX
   int y = 3072; // XXX
