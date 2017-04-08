@@ -47,10 +47,10 @@ void init()
 }
 
 void load(const char * filename,
-	  uint32_t * cols, uint32_t * rows,
-	  double * transform,
-	  char ** projection,
-	  float ** image)
+          uint32_t * cols, uint32_t * rows,
+          double * transform,
+          char ** projection,
+          float ** image)
 {
   GDALDatasetH dataset;
   GDALRasterBandH band;
@@ -95,12 +95,12 @@ void load(const char * filename,
     }
 
   if (GDALRasterIO(band, GF_Read, // Copy data
-		   0, 0,
-		   orig_cols, orig_rows,
-		   tmp,
-		   orig_cols, orig_rows,
-		   GDT_Float32,
-		   0, sizeof(float) * *cols))
+                   0, 0,
+                   orig_cols, orig_rows,
+                   tmp,
+                   orig_cols, orig_rows,
+                   GDT_Float32,
+                   0, sizeof(float) * *cols))
     {
       fprintf(stderr, "GDALRasterIO failed %s:%d\n", __FILE__, __LINE__);
       exit(-1);
@@ -109,11 +109,11 @@ void load(const char * filename,
   for (int i = 0; i < *cols; ++i) // Copy untiled image data into tiled array
     {
       for (int j = 0; j < *rows; ++j)
-	{
-	  int src_index = j * *cols + i;
-	  int dst_index = xy_to_fancy_index(*cols, i, j);
-	  (*image)[dst_index] = tmp[src_index];
-	}
+        {
+          int src_index = j * *cols + i;
+          int dst_index = xy_to_fancy_index(*cols, i, j);
+          (*image)[dst_index] = tmp[src_index];
+        }
     }
 
   CPLFree(tmp);
@@ -121,10 +121,10 @@ void load(const char * filename,
 }
 
 void dump(const char * filename,
-	  uint32_t cols, uint32_t rows,
-	  const double * transform,
-	  const char * projection,
-	  const float * image)
+          uint32_t cols, uint32_t rows,
+          const double * transform,
+          const char * projection,
+          const float * image)
 {
   GDALDatasetH dataset;
   GDALDriverH driver;
@@ -146,12 +146,12 @@ void dump(const char * filename,
   GDALSetProjection(dataset, projection);
   band = GDALGetRasterBand(dataset, 1);
   if (GDALRasterIO(band, GF_Write,
-		   0, 0,
-		   cols, rows,
-		   image,
-		   cols, rows,
-		   GDT_Float32,
-		   0, 0))
+                   0, 0,
+                   cols, rows,
+                   image,
+                   cols, rows,
+                   GDT_Float32,
+                   0, 0))
     {
       fprintf(stderr, "GDALRasterIO failed %s:%d\n", __FILE__, __LINE__);
       exit(-1);

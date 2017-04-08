@@ -34,7 +34,7 @@
 #define __VIEWSHED_H__
 
 extern void viewshed(const float * src, float * dst,
-		     uint32_t cols, uint32_t rows,
-		     double xres, double yres);
+                     uint32_t cols, uint32_t rows,
+                     double xres, double yres);
 
 #endif

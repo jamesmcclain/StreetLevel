@@ -36,12 +36,22 @@
 
 
 #define ALLOC(P,N) if (!(P = aligned_alloc(PAGESIZE, sizeof(float) * (N)))) { fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__); exit(-1); }
-#define LASTY(DY) ((int)(y + ((i - x + width) * (DY))))
+#define LASTY(DY) ((int)(y + ((i - x + width - 1) * (DY))))
+
+typedef enum direction {EAST, NORTH, WEST, SOUTH} Direction;
 
 
 void viewshed(const float * src, float * dst,
-	      uint32_t cols, uint32_t rows,
-	      double xres, double yres)
+              uint32_t cols, uint32_t rows,
+              double xres, double yres)
+{
+  viewshed_wedge(src, dst, cols, rows, xres, yres, EAST);
+}
+
+void viewshed_wedge(const float * src, float * dst,
+                    uint32_t cols, uint32_t rows,
+                    double xres, double yres,
+                    Direction dir)
 {
   float * alphas = NULL;
   float * dys = NULL;
@@ -71,42 +81,42 @@ void viewshed(const float * src, float * dst,
       if (i == x) { for (; (i + width) % TILESIZE; ++width); } else { width = TILESIZE; }
 
       for (int j = 0; j < rows; ++j) // for each ray (indexed by final row)
-	{
-	  float __attribute__ ((aligned)) dy = dys[j];
-	  int __attribute__ ((aligned)) last_y = LASTY(dy);
+        {
+          float __attribute__ ((aligned)) dy = dys[j];
+          int __attribute__ ((aligned)) last_y = LASTY(dy);
 
-	  // Minimize repeatedly-evaluation of the same pixel by
-	  // skipping overlapping rays.  If the last y value of this
-	  // ray-chunk is the same as that of the next ray-chunk, then
-	  // defer to the latter.  Otherwise, if they are different,
-	  // evaluate this chunk of the ray.
-	  if (j == rows-1 || last_y != LASTY(dys[j+1]))
-	    {
-	      // restore context from arrays
-	      float __attribute__ ((aligned)) dm = dms[j];
-	      float __attribute__ ((aligned)) alpha = alphas[j];
-	      float __attribute__ ((aligned)) current_y = y + (i - x) * dy;
-	      float __attribute__ ((aligned)) current_distance = (i - x) * dm;
+          // Minimize repeatedly-evaluation of the same pixel by
+          // skipping overlapping rays.  If the last y value of this
+          // ray-chunk is the same as that of the next ray-chunk, then
+          // defer to the latter.  Otherwise, if they are different,
+          // evaluate this chunk of the ray.
+          if (j == rows-1 || last_y != LASTY(dys[j+1]))
+            {
+              // restore context from arrays
+              float __attribute__ ((aligned)) dm = dms[j];
+              float __attribute__ ((aligned)) alpha = alphas[j];
+              float __attribute__ ((aligned)) current_y = y + (i - x) * dy;
+              float __attribute__ ((aligned)) current_distance = (i - x) * dm;
 
-	      for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
-		{
-		  int current_x = i + k;
-		  int fancy_index = xy_to_fancy_index(cols, current_x, (int)current_y);
-		  float elevation = src[fancy_index] - viewHeight;
-		  float angle = elevation / current_distance;
+              for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
+                {
+                  int current_x = i + k;
+                  int fancy_index = xy_to_fancy_index(cols, current_x, (int)current_y);
+                  float elevation = src[fancy_index] - viewHeight;
+                  float angle = elevation / current_distance;
 
-		  if (alpha < angle)
-		    {
-		      int index = xy_to_vanilla_index(cols, (i + k), (int)current_y);
-		      alpha = angle;
-		      dst[index] = 1.0;
-		    }
-		}
-	      
-	      // save context for this ray and all that overlap it
-	      for (int k = j; (k >= 0) && (last_y == LASTY(dys[k])); --k) alphas[k] = alpha;
-	    }
-	}
+                  if (alpha < angle)
+                    {
+                      int index = xy_to_vanilla_index(cols, (i + k), (int)current_y);
+                      alpha = angle;
+                      dst[index] = 1.0;
+                    }
+                }
+              
+              // save context for this ray and all that overlap it
+              for (int k = j; (k >= 0) && (last_y == LASTY(dys[k])); --k) alphas[k] = alpha;
+            }
+        }
     }
 
   free(alphas);
