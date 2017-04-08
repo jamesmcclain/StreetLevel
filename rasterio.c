@@ -73,7 +73,7 @@ void load(const char * filename,
   if ((proj = GDALGetProjectionRef(dataset))) // Get the projection
     {
       int n = strlen(proj);
-      *projection = malloc(sizeof(char) * (n+1));
+      *projection = calloc(n+1, sizeof(char));
       strncpy(*projection, proj, n);
     }
 

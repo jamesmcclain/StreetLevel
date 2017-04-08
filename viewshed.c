@@ -104,8 +104,12 @@ void viewshed(const float * src, float * dst,
 		}
 	      
 	      // save context for this ray and all that overlap it
-	      for (int k = j; last_y == LASTY(dys[k]); --k) alphas[k] = alpha;
+	      for (int k = j; (k >= 0) && (last_y == LASTY(dys[k])); --k) alphas[k] = alpha;
 	    }
 	}
     }
+
+  free(alphas);
+  free(dys);
+  free(dms);
 }
