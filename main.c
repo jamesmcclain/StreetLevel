@@ -54,7 +54,7 @@ int main(int argc, char ** argv)
   load(argv[1], &cols, &rows, transform, &projection, &src);
   dst = calloc(cols * rows, sizeof(float));
   gettimeofday(&before, NULL);
-  viewshed(src, dst, cols, rows, x_resolution(transform), y_resolution(transform));
+  viewshed(src, dst, cols, rows, 4608, 3072, 2000.0, x_resolution(transform), y_resolution(transform));
   gettimeofday(&after, NULL);
   dump(argv[2], cols, rows, transform, projection, dst);
   fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));

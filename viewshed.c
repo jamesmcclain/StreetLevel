@@ -42,16 +42,9 @@
 typedef enum direction {EAST, NORTH, WEST, SOUTH} Direction;
 
 
-void viewshed(const float * src, float * dst,
-              uint32_t cols, uint32_t rows,
-              double xres, double yres)
-{
-  viewshed_aux(src, dst, cols, rows, xres, yres, EAST);
-  viewshed_aux(src, dst, cols, rows, xres, yres, WEST);
-}
-
 void viewshed_aux(const float * src, float * dst,
-                   uint32_t cols, uint32_t rows,
+                  int cols, int rows,
+                  int x, int y, float viewHeight,
                   double xres, double yres,
                   Direction dir)
 {
@@ -60,33 +53,42 @@ void viewshed_aux(const float * src, float * dst,
   float * dms = NULL;
   int larger = (cols > rows ? cols : rows);
   int plus_minus;
+  int true_cols = cols;
 
-  int x = 4608; // XXX
-  int y = 3072; // XXX
-  float viewHeight = 2000; // XXX
+  // If northern or southern wedges, transpose.
+  if (dir == SOUTH || dir == NORTH)
+    {
+      int temp1;
+      float temp2;
+
+      temp1 = x, x = y, y = temp1;
+      temp1 = cols, cols = rows, rows = temp1;
+      temp2 = xres, xres = yres, yres = xres;
+    }
 
   ALLOC(alphas, larger);
   ALLOC(dys, larger);
   ALLOC(dms, larger);
 
-  if (dir == EAST) plus_minus = 1;
-  else if (dir == WEST) plus_minus = -1;
+  if (dir == EAST || dir == SOUTH) plus_minus = 1;
+  else if (dir == WEST || dir == NORTH) plus_minus = -1;
   else BADDIR();
 
-  for (int j = 0; j < larger; ++j)
+  for (int j = 0; j < rows; ++j)
     {
-      if (dir == EAST) dys[j] = ((float)(j - y))/(cols - x);
-      else if (dir == WEST) dys[j] = ((float)(j - y))/x;
+      if (dir == EAST || dir == SOUTH) dys[j] = ((float)(j - y))/(cols - x);
+      else if (dir == WEST || dir == NORTH) dys[j] = ((float)(j - y))/x;
       else BADDIR();
       dms[j] = sqrt((1*xres)*(1*xres) + (dys[j]*yres)*(dys[j]*yres));
       alphas[j] = -INFINITY;
     }
-  for (int i = x, width = 1; (i < cols) && (i >= 0); i += plus_minus * width)
+
+  for (int i = x, width = 1; (i < cols) && (i > 0); i += plus_minus * width)
     {
       int ix;
 
-      if (dir == EAST) ix = i - x;
-      else if (dir == WEST) ix = x - i;
+      if (dir == EAST || dir == SOUTH) ix = i - x;
+      else if (dir == WEST || dir == NORTH) ix = x - i;
       else BADDIR();
 
       // Compute the width of this slice of columns.  Nominally
@@ -114,18 +116,30 @@ void viewshed_aux(const float * src, float * dst,
 
               for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
                 {
-                  int current_x = i + k;
-                  if (dir == EAST) current_x = i + k;
-                  else if (dir == WEST) current_x = i - k;
+                  int current_x;
+                  if (dir == EAST || dir == SOUTH) current_x = i + k;
+                  else if (dir == WEST || dir == NORTH) current_x = i - k;
                   else BADDIR();
 
-                  int fancy_index = xy_to_fancy_index(cols, current_x, (int)current_y);
+                  int fancy_index;
+                  if (dir == EAST || dir == WEST)
+                    fancy_index = xy_to_fancy_index(true_cols, current_x, (int)current_y);
+                  else if (dir == SOUTH || dir == NORTH)
+                    fancy_index = xy_to_fancy_index(true_cols, (int)current_y, current_x);
+                  else BADDIR();
+
                   float elevation = src[fancy_index] - viewHeight;
                   float angle = elevation / current_distance;
 
                   if (alpha < angle)
                     {
-                      int index = xy_to_vanilla_index(cols, current_x, (int)current_y);
+                      int index;
+                      if (dir == EAST || dir == WEST)
+                        index = xy_to_vanilla_index(true_cols, current_x, (int)current_y);
+                      else if (dir == SOUTH || dir == NORTH)
+                        index = xy_to_vanilla_index(true_cols, (int)current_y, current_x);
+                      else BADDIR();
+
                       alpha = angle;
                       dst[index] = 1.0;
                     }
@@ -140,4 +154,15 @@ void viewshed_aux(const float * src, float * dst,
   free(alphas);
   free(dys);
   free(dms);
+}
+
+void viewshed(const float * src, float * dst,
+              int cols, int rows,
+              int x, int y, float z,
+              double xres, double yres)
+{
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, EAST);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, SOUTH);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, WEST);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, NORTH);
 }
