@@ -102,7 +102,7 @@ void viewshed_aux(const float * src, float * dst,
           float __attribute__ ((aligned)) dy = dys[j];
           int __attribute__ ((aligned)) last_y = LASTY(dy);
 
-          // Minimize repeatedly-evaluation of the same pixel by
+          // Minimize repeated-evaluation of the same pixel by
           // skipping overlapping rays.  If the last y value of this
           // ray-chunk is the same as that of the next ray-chunk, then
           // defer to the latter.  Otherwise, if they are different,
@@ -118,7 +118,6 @@ void viewshed_aux(const float * src, float * dst,
 #if defined(__AVX__) && (TILESIZE == 32) && (REGISTERSIZE == 8)
               if (width == 32)
                 {
-                  float __attribute__((aligned (32))) viewHeights[8];
                   float __attribute__((aligned (32))) elevations[32];
                   float __attribute__((aligned (32))) distances[32];
                   int vanilla_indices[32];
@@ -126,29 +125,33 @@ void viewshed_aux(const float * src, float * dst,
                   // load elevations
                   for (int k = 0; k < 32; ++k, current_y += dy, current_distance += dm)
                     {
-                      int current_x;
-                      if (dir == EAST || dir == SOUTH) current_x = i + k;
-                      else if (dir == WEST || dir == NORTH) current_x = i - k;
+                      int current_x, current_y_int;
+
+                      if (dir == EAST)
+                        {
+                          current_x = i + k;
+                          current_y_int = (int)current_y;
+                        }
+                      else if (dir == SOUTH)
+                        {
+                          current_y_int = i + k;
+                          current_x = (int)current_y;
+                        }
+                      else if (dir == WEST)
+                        {
+                          current_x = i - k;
+                          current_y_int = (int)current_y;
+                        }
+                      else if (dir == NORTH)
+                        {
+                          current_y_int = i - k;
+                          current_x = (int)current_y;
+                        }
                       else BADDIR();
 
-                      int fancy_index;
-                      if (dir == EAST || dir == WEST)
-                        fancy_index = xy_to_fancy_index(true_cols, current_x, (int)current_y);
-                      else if (dir == SOUTH || dir == NORTH)
-                        fancy_index = xy_to_fancy_index(true_cols, (int)current_y, current_x);
-                      else BADDIR();
-
-                      int vanilla_index;
-                      if (dir == EAST || dir == WEST)
-                        vanilla_index = xy_to_vanilla_index(true_cols, current_x, (int)current_y);
-                      else if (dir == SOUTH || dir == NORTH)
-                        vanilla_index = xy_to_vanilla_index(true_cols, (int)current_y, current_x);
-                      else BADDIR();
-
-                      vanilla_indices[k] = vanilla_index; // vanilla indices
-                      elevations[k] = src[fancy_index]; // elevations
+                      vanilla_indices[k] = xy_to_vanilla_index(true_cols, current_x, current_y_int);
+                      elevations[k] = src[xy_to_fancy_index(true_cols, current_x, current_y_int)]; // elevations
                       distances[k] = current_distance; // distances
-                      viewHeights[k % 8] = viewHeight; // viewHeights
                     }
 
                   __asm__ __volatile(
@@ -174,7 +177,7 @@ void viewshed_aux(const float * src, float * dst,
                                      "vmovaps %%ymm5, 0x40(%1) \n"
                                      "vmovaps %%ymm7, 0x60(%1) \n"
                                      :
-                                     : "q"(viewHeights), "q"(elevations), "q"(distances)
+                                     : "q"(&viewHeight), "q"(elevations), "q"(distances)
                                      : "memory", "%ymm0", "%ymm1", "%ymm2", "%ymm3", "%ymm4", "%ymm5", "%ymm6", "%ymm7", "%ymm8"
                                      );
 
