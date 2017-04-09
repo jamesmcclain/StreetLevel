@@ -88,7 +88,11 @@ void viewshed_aux(const float * src, float * dst,
       // Compute the width of this slice of columns.  Nominally
       // TILESIZE, but may be something else on the first iteration in
       // order to get aligned with tiles/pages.
-      if (i == x) { for (; (i + width) % TILESIZE; ++width); } else { width = TILESIZE; }
+      if (i == x && (dir == EAST || dir == SOUTH))
+        for (; (i + width) % TILESIZE; ++width);
+      else if (i == x && (dir == WEST || dir == NORTH))
+        for (; (i - width) % TILESIZE; ++width);
+      else width = TILESIZE;
 
       for (int j = 0; j < rows; ++j) // for each ray (indexed by final row)
         {
