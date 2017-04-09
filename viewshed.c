@@ -47,12 +47,9 @@ void viewshed_aux(const float * src, float * dst,
                   int cols, int rows,
                   int x, int y, float viewHeight,
                   double xres, double yres,
+                  float * alphas, float * dys, float * dms,
                   Direction dir)
 {
-  float * alphas = NULL;
-  float * dys = NULL;
-  float * dms = NULL;
-  int larger = (cols > rows ? cols : rows);
   int plus_minus;
   int true_cols = cols;
 
@@ -66,10 +63,6 @@ void viewshed_aux(const float * src, float * dst,
       temp1 = cols, cols = rows, rows = temp1;
       temp2 = xres, xres = yres, yres = temp2;
     }
-
-  ALLOC(alphas, larger);
-  ALLOC(dys, larger);
-  ALLOC(dms, larger);
 
   if (dir == EAST || dir == SOUTH) plus_minus = 1;
   else if (dir == WEST || dir == NORTH) plus_minus = -1;
@@ -234,10 +227,6 @@ void viewshed_aux(const float * src, float * dst,
             }
         }
     }
-
-  free(alphas);
-  free(dys);
-  free(dms);
 }
 
 void viewshed(const float * src, float * dst,
@@ -245,8 +234,21 @@ void viewshed(const float * src, float * dst,
               int x, int y, float z,
               double xres, double yres)
 {
-  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, EAST);
-  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, SOUTH);
-  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, WEST);
-  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, NORTH);
+  int larger = (cols > rows ? cols : rows);
+  float * alphas = NULL;
+  float * dys = NULL;
+  float * dms = NULL;
+
+  ALLOC(alphas, larger);
+  ALLOC(dys, larger);
+  ALLOC(dms, larger);
+
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, alphas, dys, dms, EAST);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, alphas, dys, dms, SOUTH);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, alphas, dys, dms, WEST);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, alphas, dys, dms, NORTH);
+
+  free(alphas);
+  free(dys);
+  free(dms);
 }
