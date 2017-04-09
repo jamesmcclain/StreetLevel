@@ -63,7 +63,7 @@ void viewshed_aux(const float * src, float * dst,
 
       temp1 = x, x = y, y = temp1;
       temp1 = cols, cols = rows, rows = temp1;
-      temp2 = xres, xres = yres, yres = xres;
+      temp2 = xres, xres = yres, yres = temp2;
     }
 
   ALLOC(alphas, larger);
