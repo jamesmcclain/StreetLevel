@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <immintrin.h>
 #include "rasterio.h"
 
 
@@ -46,12 +47,9 @@ void viewshed_aux(const float * src, float * dst,
                   int cols, int rows,
                   int x, int y, float viewHeight,
                   double xres, double yres,
+                  float * alphas, float * dys, float * dms,
                   Direction dir)
 {
-  float * alphas = NULL;
-  float * dys = NULL;
-  float * dms = NULL;
-  int larger = (cols > rows ? cols : rows);
   int plus_minus;
   int true_cols = cols;
 
@@ -63,12 +61,8 @@ void viewshed_aux(const float * src, float * dst,
 
       temp1 = x, x = y, y = temp1;
       temp1 = cols, cols = rows, rows = temp1;
-      temp2 = xres, xres = yres, yres = xres;
+      temp2 = xres, xres = yres, yres = temp2;
     }
-
-  ALLOC(alphas, larger);
-  ALLOC(dys, larger);
-  ALLOC(dms, larger);
 
   if (dir == EAST || dir == SOUTH) plus_minus = 1;
   else if (dir == WEST || dir == NORTH) plus_minus = -1;
@@ -94,14 +88,18 @@ void viewshed_aux(const float * src, float * dst,
       // Compute the width of this slice of columns.  Nominally
       // TILESIZE, but may be something else on the first iteration in
       // order to get aligned with tiles/pages.
-      if (i == x) { for (; (i + width) % TILESIZE; ++width); } else { width = TILESIZE; }
+      if (i == x && (dir == EAST || dir == SOUTH))
+        for (; (i + width) % TILESIZE; ++width);
+      else if (i == x && (dir == WEST || dir == NORTH))
+        for (; (i - width) % TILESIZE; ++width);
+      else width = TILESIZE;
 
       for (int j = 0; j < rows; ++j) // for each ray (indexed by final row)
         {
           float __attribute__ ((aligned)) dy = dys[j];
           int __attribute__ ((aligned)) last_y = LASTY(dy);
 
-          // Minimize repeatedly-evaluation of the same pixel by
+          // Minimize repeated-evaluation of the same pixel by
           // skipping overlapping rays.  If the last y value of this
           // ray-chunk is the same as that of the next ray-chunk, then
           // defer to the latter.  Otherwise, if they are different,
@@ -114,34 +112,117 @@ void viewshed_aux(const float * src, float * dst,
               float __attribute__ ((aligned)) current_y = y + ix * dy;
               float __attribute__ ((aligned)) current_distance = ix * dm;
 
-              for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
+#if defined(__AVX__) && (TILESIZE == 32) && (REGISTERSIZE == 8)
+              if (width == 32)
                 {
-                  int current_x;
-                  if (dir == EAST || dir == SOUTH) current_x = i + k;
-                  else if (dir == WEST || dir == NORTH) current_x = i - k;
-                  else BADDIR();
+                  float __attribute__((aligned (32))) elevations[32];
+                  float __attribute__((aligned (32))) distances[32];
+                  int vanilla_indices[32];
 
-                  int fancy_index;
-                  if (dir == EAST || dir == WEST)
-                    fancy_index = xy_to_fancy_index(true_cols, current_x, (int)current_y);
-                  else if (dir == SOUTH || dir == NORTH)
-                    fancy_index = xy_to_fancy_index(true_cols, (int)current_y, current_x);
-                  else BADDIR();
-
-                  float elevation = src[fancy_index] - viewHeight;
-                  float angle = elevation / current_distance;
-
-                  if (alpha < angle)
+                  // load elevations
+                  for (int k = 0; k < 32; ++k, current_y += dy, current_distance += dm)
                     {
-                      int index;
-                      if (dir == EAST || dir == WEST)
-                        index = xy_to_vanilla_index(true_cols, current_x, (int)current_y);
-                      else if (dir == SOUTH || dir == NORTH)
-                        index = xy_to_vanilla_index(true_cols, (int)current_y, current_x);
+                      int current_x, current_y_int;
+
+                      if (dir == EAST)
+                        {
+                          current_x = i + k;
+                          current_y_int = (int)current_y;
+                        }
+                      else if (dir == SOUTH)
+                        {
+                          current_y_int = i + k;
+                          current_x = (int)current_y;
+                        }
+                      else if (dir == WEST)
+                        {
+                          current_x = i - k;
+                          current_y_int = (int)current_y;
+                        }
+                      else if (dir == NORTH)
+                        {
+                          current_y_int = i - k;
+                          current_x = (int)current_y;
+                        }
                       else BADDIR();
 
-                      alpha = angle;
-                      dst[index] = 1.0;
+                      vanilla_indices[k] = xy_to_vanilla_index(true_cols, current_x, current_y_int);
+                      elevations[k] = src[xy_to_fancy_index(true_cols, current_x, current_y_int)]; // elevations
+                      distances[k] = current_distance; // distances
+                    }
+
+                  __asm__ __volatile(
+                                     "vbroadcastss 0x0(%0), %%ymm0 \n" // viewHeights
+                                     "vmovaps 0x0(%1), %%ymm1 \n" // raw elevations
+                                     "vmovaps 0x0(%2), %%ymm2 \n" // distances
+                                     "vmovaps 0x20(%1), %%ymm3 \n"
+                                     "vmovaps 0x20(%2), %%ymm4 \n"
+                                     "vmovaps 0x40(%1), %%ymm5 \n"
+                                     "vmovaps 0x40(%2), %%ymm6 \n"
+                                     "vmovaps 0x60(%1), %%ymm7 \n"
+                                     "vmovaps 0x60(%2), %%ymm8 \n"
+                                     "vsubps %%ymm0, %%ymm1, %%ymm1 \n" // elevations
+                                     "vsubps %%ymm0, %%ymm3, %%ymm3 \n"
+                                     "vsubps %%ymm0, %%ymm5, %%ymm5 \n"
+                                     "vsubps %%ymm0, %%ymm7, %%ymm7 \n"
+                                     "vdivps %%ymm2, %%ymm1, %%ymm1 \n" // angles
+                                     "vdivps %%ymm4, %%ymm3, %%ymm3 \n"
+                                     "vdivps %%ymm6, %%ymm5, %%ymm5 \n"
+                                     "vdivps %%ymm8, %%ymm7, %%ymm7 \n"
+                                     "vmovaps %%ymm1, 0x0(%1) \n" // store angles
+                                     "vmovaps %%ymm3, 0x20(%1) \n"
+                                     "vmovaps %%ymm5, 0x40(%1) \n"
+                                     "vmovaps %%ymm7, 0x60(%1) \n"
+                                     :
+                                     : "q"(&viewHeight), "q"(elevations), "q"(distances)
+                                     : "memory", "%ymm0", "%ymm1", "%ymm2", "%ymm3", "%ymm4", "%ymm5", "%ymm6", "%ymm7", "%ymm8"
+                                     );
+
+                  // write into target image
+                  for (int k = 0; k < 32; ++k)
+                    {
+                      float angle = elevations[k];
+                      int index = vanilla_indices[k];
+
+                      if (alpha < angle)
+                        {
+                          alpha = angle;
+                          dst[index] = 1.0;
+                        }
+                    }
+                }
+              else
+#endif
+                {
+                  for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
+                    {
+                      int current_x;
+                      if (dir == EAST || dir == SOUTH) current_x = i + k;
+                      else if (dir == WEST || dir == NORTH) current_x = i - k;
+                      else BADDIR();
+
+                      int fancy_index;
+                      if (dir == EAST || dir == WEST)
+                        fancy_index = xy_to_fancy_index(true_cols, current_x, (int)current_y);
+                      else if (dir == SOUTH || dir == NORTH)
+                        fancy_index = xy_to_fancy_index(true_cols, (int)current_y, current_x);
+                      else BADDIR();
+
+                      float elevation = src[fancy_index] - viewHeight;
+                      float angle = elevation / current_distance;
+
+                      if (alpha < angle)
+                        {
+                          int index;
+                          if (dir == EAST || dir == WEST)
+                            index = xy_to_vanilla_index(true_cols, current_x, (int)current_y);
+                          else if (dir == SOUTH || dir == NORTH)
+                            index = xy_to_vanilla_index(true_cols, (int)current_y, current_x);
+                          else BADDIR();
+
+                          alpha = angle;
+                          dst[index] = 1.0;
+                        }
                     }
                 }
 
@@ -150,10 +231,6 @@ void viewshed_aux(const float * src, float * dst,
             }
         }
     }
-
-  free(alphas);
-  free(dys);
-  free(dms);
 }
 
 void viewshed(const float * src, float * dst,
@@ -161,8 +238,21 @@ void viewshed(const float * src, float * dst,
               int x, int y, float z,
               double xres, double yres)
 {
-  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, EAST);
-  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, SOUTH);
-  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, WEST);
-  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, NORTH);
+  int larger = (cols > rows ? cols : rows);
+  float * alphas = NULL;
+  float * dys = NULL;
+  float * dms = NULL;
+
+  ALLOC(alphas, larger);
+  ALLOC(dys, larger);
+  ALLOC(dms, larger);
+
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, alphas, dys, dms, EAST);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, alphas, dys, dms, SOUTH);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, alphas, dys, dms, WEST);
+  viewshed_aux(src, dst, cols, rows, x, y, z, xres, yres, alphas, dys, dms, NORTH);
+
+  free(alphas);
+  free(dys);
+  free(dms);
 }

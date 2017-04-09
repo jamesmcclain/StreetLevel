@@ -1,3 +1,4 @@
+core
 *.o
 streetlevel
 cachegrind.out.*
