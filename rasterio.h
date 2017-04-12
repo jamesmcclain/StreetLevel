@@ -53,7 +53,7 @@
 
 #define REGISTERSIZE (8)
 
-extern void init();
+extern void rasterio_init();
 extern void load(const char * filename,
                  uint32_t * cols, uint32_t * rows,
                  double * transform,

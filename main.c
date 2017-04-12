@@ -50,7 +50,7 @@ int main(int argc, char ** argv)
       exit(-1);
     }
 
-  init();
+  rasterio_init();
   load(argv[1], &cols, &rows, transform, &projection, &src);
   dst = calloc(cols * rows, sizeof(float));
   gettimeofday(&before, NULL);
