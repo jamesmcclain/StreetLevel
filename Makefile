@@ -1,13 +1,13 @@
 GDAL_CFLAGS ?= -I$(HOME)/local/gdal/include
 GDAL_LDFLAGS ?= -L$(HOME)/local/gdal/lib -lgdal -lopenjp2
-CFLAGS ?= -ggdb3 -O0
+CFLAGS ?= -march=native -mtune=native -Ofast -g
 CFLAGS += -std=c11 $(GDAL_CFLAGS)
-LDFLAGS += $(GDAL_LDFLAGS) -lm
+LDFLAGS += $(GDAL_LDFLAGS) -lm -lOpenCL
 
 
 all: streetlevel
 
-streetlevel: main.o rasterio.o viewshed.o
+streetlevel: main.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(LDFLAGS) -o $@
 
 main.o: main.c *.h
