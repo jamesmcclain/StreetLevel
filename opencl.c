@@ -30,9 +30,19 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
 #include <CL/cl.h>
+#include "opencl.h"
+
+
+#define ENSURE(call, r) { if (r = (call)) { fprintf(stderr, "Non-zero return code %d %s:%d\n", r, __FILE__, __LINE__); } }
+
 
 void opencl_init()
 {
+  cl_int ret;
+  cl_uint num_platforms;
+
+  ENSURE(clGetPlatformIDs(0, NULL, &num_platforms), ret);
 
 }
