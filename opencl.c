@@ -79,8 +79,10 @@ void opencl_init()
         {
           ds[dsn].platform = platforms[i];
           ds[dsn].device = devices[j];
-          ds[dsn].context = clCreateContext(NULL, 1, &devices[j], NULL, NULL, &ret), ENSURE(ret, ret);
-          ds[dsn].queue = clCreateCommandQueue(ds[dsn].context, ds[dsn].device, 0, &ret), ENSURE(ret, ret);
+          ds[dsn].context = clCreateContext(NULL, 1, &devices[j], NULL, NULL, &ret);
+          ENSURE(ret, ret);
+          ds[dsn].queue = clCreateCommandQueue(ds[dsn].context, ds[dsn].device, 0, &ret);
+          ENSURE(ret, ret);
         }
     }
 
