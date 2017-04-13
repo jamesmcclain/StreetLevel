@@ -41,7 +41,7 @@
  */
 
 
-void init()
+void rasterio_init()
 {
   GDALAllRegister();
 }
