@@ -31,18 +31,55 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
 #include <CL/cl.h>
 #include "opencl.h"
 
 
-#define ENSURE(call, r) { if (r = (call)) { fprintf(stderr, "Non-zero return code %d %s:%d\n", r, __FILE__, __LINE__); } }
+#define N (8)
+
+#define MIN(a,b) (a < b ? a: b)
+#define ENSURE(call, r) { if (r = (call)) { fprintf(stderr, "Non-zero return code %d %s:%d\n", r, __FILE__, __LINE__); exit(-1); } }
+
+typedef struct {
+  cl_platform_id platform;
+  cl_device_id device;
+  uint8_t gpu;
+} device_struct;
 
 
 void opencl_init()
 {
   cl_int ret;
+  cl_platform_id platforms[N];
   cl_uint num_platforms;
 
-  ENSURE(clGetPlatformIDs(0, NULL, &num_platforms), ret);
+  device_struct ds[N];
+  int dsn = 0;
 
+  // Query Platforms
+  ENSURE(clGetPlatformIDs(0, NULL, &num_platforms), ret);
+  ENSURE(clGetPlatformIDs(MIN(num_platforms, N), platforms, &num_platforms), ret);
+
+  for (int i = 0; i < num_platforms; ++i)
+    {
+      cl_device_id devices[N];
+      cl_uint num_devices;
+
+      // Query Devices
+      ENSURE(clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices), ret);
+      ENSURE(clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, MIN(num_devices, N), devices, &num_devices), ret);
+      for (int j = 0; j < num_devices; ++j)
+        {
+          ds[dsn].platform = platforms[i];
+          ds[dsn++].device = devices[j];
+        }
+    }
+
+  for (int i = 0; i < dsn; ++i)
+    {
+      fprintf(stdout, "platform = %d, device = %d\n", ds[i].platform, ds[i].device);
+    }
 }
