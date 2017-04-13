@@ -46,8 +46,9 @@
 typedef struct {
   cl_platform_id platform;
   cl_device_id device;
+  cl_context context;
   uint8_t gpu;
-} device_struct;
+} opencl_struct;
 
 
 void opencl_init()
@@ -56,7 +57,7 @@ void opencl_init()
   cl_platform_id platforms[N];
   cl_uint num_platforms;
 
-  device_struct ds[N];
+  opencl_struct ds[N];
   int dsn = 0;
 
   // Query Platforms
@@ -71,15 +72,18 @@ void opencl_init()
       // Query Devices
       ENSURE(clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices), ret);
       ENSURE(clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, MIN(num_devices, N), devices, &num_devices), ret);
-      for (int j = 0; j < num_devices; ++j)
+      for (int j = 0; j < num_devices; ++j, ++dsn)
         {
           ds[dsn].platform = platforms[i];
-          ds[dsn++].device = devices[j];
+          ds[dsn].device = devices[j];
+          ds[dsn].context = clCreateContext(NULL, 1, &devices[j], NULL, NULL, &ret);
+          ENSURE(ret, ret);
         }
     }
 
+  // Another option: https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/clCreateContextFromType.html
   for (int i = 0; i < dsn; ++i)
     {
-      fprintf(stdout, "platform = %d, device = %d\n", ds[i].platform, ds[i].device);
+      fprintf(stdout, "platform = %x, device = %x, context=%x\n", ds[i].platform, ds[i].device, ds[i].context);
     }
 }
