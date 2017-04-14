@@ -33,16 +33,20 @@
 #include <inttypes.h>
 #include <sys/time.h>
 #include "rasterio.h"
+#include "opencl.h"
 #include "viewshed_cpu.h"
+#include "viewshed_cl.h"
 
 
 int main(int argc, char ** argv)
 {
-  float * src, * dst;
-  uint32_t cols, rows;
-  double transform[6];
   char * projection;
+  double transform[6];
+  float * src, * dst;
+  int devices;
+  opencl_struct info[4];
   struct timeval before, after;
+  uint32_t cols, rows;
 
   if (argc < 3)
     {
@@ -50,20 +54,28 @@ int main(int argc, char ** argv)
       exit(-1);
     }
 
-  /* opencl_init(); */
-  rasterio_init();
+  opencl_init(4, &devices, info);
 
-  load(argv[1], &cols, &rows, transform, &projection, &src);
-  dst = calloc(cols * rows, sizeof(float));
-  gettimeofday(&before, NULL);
-  viewshed_cpu(src, dst, cols, rows, 4609, 3073, 2000.0, x_resolution(transform), y_resolution(transform));
-  gettimeofday(&after, NULL);
-  dump(argv[2], cols, rows, transform, projection, dst);
-  fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
+  for (int i = 0; i < devices; ++i)
+    {
+      fprintf(stdout,
+              "platform = %x, device = %x, context=%x, queue=%x\n",
+              info[i].platform, info[i].device, info[i].context, info[i].queue);
+    }
 
-  free(projection);
-  free(src);
-  free(dst);
+  /* rasterio_init(); */
+
+  /* load(argv[1], &cols, &rows, transform, &projection, &src); */
+  /* dst = calloc(cols * rows, sizeof(float)); */
+  /* gettimeofday(&before, NULL); */
+  /* viewshed_cpu(src, dst, cols, rows, 4609, 3073, 2000.0, x_resolution(transform), y_resolution(transform)); */
+  /* gettimeofday(&after, NULL); */
+  /* dump(argv[2], cols, rows, transform, projection, dst); */
+  /* fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec)); */
+
+  /* free(projection); */
+  /* free(src); */
+  /* free(dst); */
 
   return 0;
 }

@@ -33,6 +33,16 @@
 #ifndef __OPENCL_H__
 #define __OPENCL_H__
 
-void opencl_init();
+#include <CL/cl.h>
+
+typedef struct {
+  cl_platform_id platform;
+  cl_device_id device;
+  cl_context context;
+  cl_command_queue queue;
+} opencl_struct;
+
+
+extern void opencl_init(int N, int * n, opencl_struct * info);
 
 #endif

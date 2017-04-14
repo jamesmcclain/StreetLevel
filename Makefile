@@ -7,16 +7,16 @@ LDFLAGS += $(GDAL_LDFLAGS) -lm -lOpenCL
 
 all: streetlevel
 
-streetlevel: main.o rasterio.o opencl.o viewshed_cpu.o
+streetlevel: main.o rasterio.o opencl.o viewshed_cpu.o viewshed_cl.o
 	$(CC) $^ $(LDFLAGS) -o $@
 
 main.o: main.c *.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
 %.o: %.c %.h Makefile
-	$(CC) $(CFLAGS) %< -c -o $@
+	$(CC) $(CFLAGS) $< -c -o $@
 
-%.o: %.c %.h Makefile
+%.o: %.c Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
 
 test: streetlevel

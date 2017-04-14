@@ -30,48 +30,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <math.h>
-#include <CL/cl.h>
+#ifndef __VIEWSHED_CL_H__
+#define __VIEWSHED_CL_H__
+
 #include "opencl.h"
 
+extern void viewshed_cl(const opencl_struct * info,
+                        const float * src, float * dst,
+                        int cols, int rows,
+                        int x, int y, int z,
+                        double xres, double yres);
 
-#define MIN(a,b) (a < b ? a: b)
-#define ENSURE(call, r) { if (r = (call)) { fprintf(stderr, "Non-zero return code %d %s:%d\n", r, __FILE__, __LINE__); exit(-1); } }
-
-
-void opencl_init(int N, int * n, opencl_struct * info)
-{
-  cl_int ret;
-  cl_platform_id platforms[4];
-  cl_uint num_platforms;
-
-  *n = 0;
-
-  // Query Platforms
-  ENSURE(clGetPlatformIDs(0, NULL, &num_platforms), ret);
-  ENSURE(clGetPlatformIDs(MIN(num_platforms, N), platforms, &num_platforms), ret);
-
-  for (int i = 0; i < num_platforms; ++i)
-    {
-      cl_device_id devices[4];
-      cl_uint num_devices;
-
-      // Query Devices
-      ENSURE(clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_CPU, 0, NULL, &num_devices), ret);
-      ENSURE(clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_CPU, MIN(num_devices, N), devices, &num_devices), ret);
-
-      // Contexts and Command Queues
-      for (int j = 0; j < num_devices; ++j, ++(*n))
-        {
-          info[*n].platform = platforms[i];
-          info[*n].device = devices[j];
-          info[*n].context = clCreateContext(NULL, 1, &devices[j], NULL, NULL, &ret);
-          ENSURE(ret, ret);
-          info[*n].queue = clCreateCommandQueue(info[*n].context, info[*n].device, 0, &ret);
-          ENSURE(ret, ret);
-        }
-    }
-}
+#endif
