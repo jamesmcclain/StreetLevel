@@ -54,11 +54,15 @@ int main(int argc, char ** argv)
       exit(-1);
     }
 
+  // Initialize
   opencl_init(4, &devices, info);
   rasterio_init();
 
+  // Load
   load(argv[1], &cols, &rows, transform, &projection, &src);
   dst = calloc(cols * rows, sizeof(float));
+
+  // Compute
   gettimeofday(&before, NULL);
   viewshed_cl(devices, info,
               src, dst,
@@ -70,9 +74,13 @@ int main(int argc, char ** argv)
   /*              4609, 3073, 2000.0, */
   /*              x_resolution(transform), y_resolution(transform)); */
   gettimeofday(&after, NULL);
-  /* dump(argv[2], cols, rows, transform, projection, dst); */
   fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
 
+
+  // Output
+  dump(argv[2], cols, rows, transform, projection, dst);
+
+  // Cleanup
   free(projection);
   free(src);
   free(dst);

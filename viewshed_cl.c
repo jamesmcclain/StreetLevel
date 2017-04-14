@@ -45,12 +45,30 @@ void viewshed_cl(int devices,
                  int x, int y, int z,
                  double xres, double yres)
 {
+  cl_event event;
+  cl_mem src_buffer, dst_buffer;
   int ret;
-  cl_mem buffer;
 
-  buffer = clCreateBuffer(info[0].context,
-                          CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
-                          sizeof(float) * cols * rows, src,
-                          &ret);
+  // Create buffers
+  src_buffer = clCreateBuffer(info[0].context,
+                              CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                              sizeof(float) * cols * rows,
+                              src,
+                              &ret);
   ENSURE(ret, ret);
+  dst_buffer = clCreateBuffer(info[0].context,
+                              CL_MEM_WRITE_ONLY,
+                              sizeof(float) * cols * rows,
+                              NULL,
+                              &ret);
+  ENSURE(ret, ret);
+
+  // Read result
+  ENSURE(clEnqueueReadBuffer(info[0].queue,
+                             dst_buffer,
+                             CL_TRUE,
+                             0, sizeof(float) * cols * rows,
+                             dst,
+                             0, NULL,
+                             &event), ret);
 }
