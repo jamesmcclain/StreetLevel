@@ -122,9 +122,9 @@ void load(const char * filename,
 
 void dump(const char * filename,
           uint32_t cols, uint32_t rows,
-          const double * transform,
+          double * transform,
           const char * projection,
-          const float * image)
+          float * image)
 {
   GDALDatasetH dataset;
   GDALDriverH driver;
