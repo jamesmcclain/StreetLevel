@@ -38,10 +38,19 @@
 #include "rasterio.h"
 
 
-void viewshed_cl(const opencl_struct * info,
+void viewshed_cl(int devices,
+                 const opencl_struct * info,
                  const float * src, float * dst,
                  int cols, int rows,
                  int x, int y, int z,
                  double xres, double yres)
 {
+  int ret;
+  cl_mem buffer;
+
+  buffer = clCreateBuffer(info[0].context,
+                          CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
+                          sizeof(float) * cols * rows, src,
+                          &ret);
+  ENSURE(ret, ret);
 }

@@ -35,6 +35,9 @@
 
 #include <CL/cl.h>
 
+#define ENSURE(call, r) { if (r = (call)) { fprintf(stderr, "Non-zero return code %d %s:%d\n", r, __FILE__, __LINE__); exit(-1); } }
+
+
 typedef struct {
   cl_platform_id platform;
   cl_device_id device;

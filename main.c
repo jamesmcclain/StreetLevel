@@ -55,27 +55,27 @@ int main(int argc, char ** argv)
     }
 
   opencl_init(4, &devices, info);
+  rasterio_init();
 
-  for (int i = 0; i < devices; ++i)
-    {
-      fprintf(stdout,
-              "platform = %x, device = %x, context=%x, queue=%x\n",
-              info[i].platform, info[i].device, info[i].context, info[i].queue);
-    }
-
-  /* rasterio_init(); */
-
-  /* load(argv[1], &cols, &rows, transform, &projection, &src); */
-  /* dst = calloc(cols * rows, sizeof(float)); */
-  /* gettimeofday(&before, NULL); */
-  /* viewshed_cpu(src, dst, cols, rows, 4609, 3073, 2000.0, x_resolution(transform), y_resolution(transform)); */
-  /* gettimeofday(&after, NULL); */
+  load(argv[1], &cols, &rows, transform, &projection, &src);
+  dst = calloc(cols * rows, sizeof(float));
+  gettimeofday(&before, NULL);
+  viewshed_cl(devices, info,
+              src, dst,
+              cols, rows,
+              4608, 3072, 2000.0,
+              x_resolution(transform), y_resolution(transform));
+  /* viewshed_cpu(src, dst, */
+  /*              cols, rows, */
+  /*              4609, 3073, 2000.0, */
+  /*              x_resolution(transform), y_resolution(transform)); */
+  gettimeofday(&after, NULL);
   /* dump(argv[2], cols, rows, transform, projection, dst); */
-  /* fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec)); */
+  fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
 
-  /* free(projection); */
-  /* free(src); */
-  /* free(dst); */
+  free(projection);
+  free(src);
+  free(dst);
 
   return 0;
 }
