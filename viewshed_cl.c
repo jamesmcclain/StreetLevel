@@ -33,10 +33,32 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include <CL/cl.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include "opencl.h"
 #include "rasterio.h"
 
+
+char * readfile(const char * filename)
+{
+  char * str;
+  int fd, ret;
+  struct stat buf;
+
+  fd = open("./viewshed.cl", O_RDONLY);
+  ENSURE(fstat(fd, &buf), ret);
+  str = calloc(buf.st_size + 1, 1);
+  ret = read(fd, str, buf.st_size);
+  ENSURE(close(fd), ret);
+
+  return str;
+}
 
 void viewshed_cl(int devices,
                  const opencl_struct * info,
@@ -45,15 +67,22 @@ void viewshed_cl(int devices,
                  int x, int y, int z,
                  double xres, double yres)
 {
-  cl_event event;
-  cl_mem src_buffer, dst_buffer;
-  int ret;
+  const char * program_src;
+  size_t program_src_length;
+  size_t global_work_size[0];
 
-  // Create buffers
+  cl_event event;
+  cl_int ret;
+  cl_mem src_buffer, dst_buffer;
+  cl_program program;
+  cl_kernel kernel;
+
+  // Create source, destination buffers
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateBuffer.html
   src_buffer = clCreateBuffer(info[0].context,
                               CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                               sizeof(float) * cols * rows,
-                              src,
+                              (void *)src,
                               &ret);
   ENSURE(ret, ret);
   dst_buffer = clCreateBuffer(info[0].context,
@@ -63,12 +92,45 @@ void viewshed_cl(int devices,
                               &ret);
   ENSURE(ret, ret);
 
-  // Read result
+  // Load, build program
+  program_src = readfile("./viewshed.cl");
+  program_src_length = strlen(program_src);
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateProgramWithSource.html
+  program = clCreateProgramWithSource(info[0].context, 1, &program_src, &program_src_length, &ret);
+  ENSURE(ret, ret);
+  free((void *)program_src);
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clBuildProgram.html
+  ENSURE(clBuildProgram(program, 1, &(info[0].device), NULL, NULL, NULL), ret);
+
+  // Setup kernel
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateKernel.html
+  kernel = clCreateKernel(program, "viewshed", &ret);
+  ENSURE(ret, ret);
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetKernelArg.html
+  ENSURE(clSetKernelArg(kernel, 0, sizeof(cl_mem), &src_buffer), ret);
+  ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_mem), &dst_buffer), ret);
+
+  // Enqueue kernel
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
+  global_work_size[0] = 8192;
+  ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
+                                NULL, global_work_size, NULL,
+                                0, NULL, &event), ret);
+
+  // Read result from device
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueReadBuffer.html
   ENSURE(clEnqueueReadBuffer(info[0].queue,
                              dst_buffer,
                              CL_TRUE,
-                             0, sizeof(float) * cols * rows,
-                             dst,
-                             0, NULL,
-                             &event), ret);
+                             0, sizeof(float) * cols * rows, dst,
+                             1, &event, NULL), ret);
+
+  /* ret = clFlush(info[0].queue); */
+  /* ret = clFinish(info[0].queue); */
+  /* ret = clReleaseKernel(kernel); */
+  /* ret = clReleaseProgram(program); */
+  /* ret = clReleaseMemObject(src_buffer); */
+  /* ret = clReleaseMemObject(dst_buffer); */
+  /* ret = clReleaseCommandQueue(info[0].queue); */
+  /* ret = clReleaseContext(info[0].context); */
 }
