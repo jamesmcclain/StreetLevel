@@ -7,7 +7,7 @@ LDFLAGS += $(GDAL_LDFLAGS) -lm -lOpenCL
 
 all: streetlevel
 
-streetlevel: main.o rasterio.o opencl.o viewshed.o
+streetlevel: main.o rasterio.o opencl.o viewshed_cpu.o
 	$(CC) $^ $(LDFLAGS) -o $@
 
 main.o: main.c *.h

@@ -30,12 +30,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VIEWSHED_H__
-#define __VIEWSHED_H__
+#ifndef __VIEWSHED_CPU_H__
+#define __VIEWSHED_CPU_H__
 
-extern void viewshed(const float * src, float * dst,
-                     int cols, int rows,
-		     int x, int y, float z,
-                     double xres, double yres);
+extern void viewshed_cpu(const float * src, float * dst,
+                         int cols, int rows,
+                         int x, int y, float z,
+                         double xres, double yres);
 
 #endif

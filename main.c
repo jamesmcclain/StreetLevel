@@ -33,7 +33,7 @@
 #include <inttypes.h>
 #include <sys/time.h>
 #include "rasterio.h"
-#include "viewshed.h"
+#include "viewshed_cpu.h"
 
 
 int main(int argc, char ** argv)
@@ -44,26 +44,26 @@ int main(int argc, char ** argv)
   char * projection;
   struct timeval before, after;
 
-  /* if (argc < 3) */
-  /*   { */
-  /*     fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__); */
-  /*     exit(-1); */
-  /*   } */
+  if (argc < 3)
+    {
+      fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
 
-  opencl_init();
+  /* opencl_init(); */
   rasterio_init();
 
-  /* load(argv[1], &cols, &rows, transform, &projection, &src); */
-  /* dst = calloc(cols * rows, sizeof(float)); */
-  /* gettimeofday(&before, NULL); */
-  /* viewshed(src, dst, cols, rows, 4609, 3073, 2000.0, x_resolution(transform), y_resolution(transform)); */
-  /* gettimeofday(&after, NULL); */
-  /* dump(argv[2], cols, rows, transform, projection, dst); */
-  /* fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec)); */
+  load(argv[1], &cols, &rows, transform, &projection, &src);
+  dst = calloc(cols * rows, sizeof(float));
+  gettimeofday(&before, NULL);
+  viewshed_cpu(src, dst, cols, rows, 4609, 3073, 2000.0, x_resolution(transform), y_resolution(transform));
+  gettimeofday(&after, NULL);
+  dump(argv[2], cols, rows, transform, projection, dst);
+  fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
 
-  /* free(projection); */
-  /* free(src); */
-  /* free(dst); */
+  free(projection);
+  free(src);
+  free(dst);
 
   return 0;
 }
