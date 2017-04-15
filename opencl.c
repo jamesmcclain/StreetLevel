@@ -38,28 +38,16 @@
 #include "opencl.h"
 
 
-#define N (8)
-
 #define MIN(a,b) (a < b ? a: b)
-#define ENSURE(call, r) { if (r = (call)) { fprintf(stderr, "Non-zero return code %d %s:%d\n", r, __FILE__, __LINE__); exit(-1); } }
-
-typedef struct {
-  cl_platform_id platform;
-  cl_device_id device;
-  cl_context context;
-  cl_command_queue queue;
-  uint8_t gpu;
-} opencl_struct;
 
 
-void opencl_init()
+void opencl_init(int N, int * n, opencl_struct * info)
 {
   cl_int ret;
-  cl_platform_id platforms[N];
+  cl_platform_id platforms[4];
   cl_uint num_platforms;
 
-  opencl_struct ds[N];
-  int dsn = 0;
+  *n = 0;
 
   // Query Platforms
   ENSURE(clGetPlatformIDs(0, NULL, &num_platforms), ret);
@@ -67,30 +55,23 @@ void opencl_init()
 
   for (int i = 0; i < num_platforms; ++i)
     {
-      cl_device_id devices[N];
+      cl_device_id devices[4];
       cl_uint num_devices;
 
       // Query Devices
-      ENSURE(clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices), ret);
-      ENSURE(clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, MIN(num_devices, N), devices, &num_devices), ret);
+      ret = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
+      ret |= clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, MIN(num_devices, N), devices, &num_devices);
+      if (ret) num_devices = 0;
 
       // Contexts and Command Queues
-      for (int j = 0; j < num_devices; ++j, ++dsn)
+      for (int j = 0; j < num_devices; ++j, ++(*n))
         {
-          ds[dsn].platform = platforms[i];
-          ds[dsn].device = devices[j];
-          ds[dsn].context = clCreateContext(NULL, 1, &devices[j], NULL, NULL, &ret);
+          info[*n].platform = platforms[i];
+          info[*n].device = devices[j];
+          info[*n].context = clCreateContext(NULL, 1, &devices[j], NULL, NULL, &ret);
           ENSURE(ret, ret);
-          ds[dsn].queue = clCreateCommandQueue(ds[dsn].context, ds[dsn].device, 0, &ret);
+          info[*n].queue = clCreateCommandQueue(info[*n].context, info[*n].device, 0, &ret);
           ENSURE(ret, ret);
         }
-    }
-
-  // Another option: https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/clCreateContextFromType.html
-  for (int i = 0; i < dsn; ++i)
-    {
-      fprintf(stdout,
-              "platform = %x, device = %x, context=%x, queue=%x\n",
-              ds[i].platform, ds[i].device, ds[i].context, ds[i].queue);
     }
 }

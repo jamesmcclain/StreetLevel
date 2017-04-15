@@ -233,10 +233,10 @@ void viewshed_aux(const float * src, float * dst,
     }
 }
 
-void viewshed(const float * src, float * dst,
-              int cols, int rows,
-              int x, int y, float z,
-              double xres, double yres)
+void viewshed_cpu(const float * src, float * dst,
+                  int cols, int rows,
+                  int x, int y, float z,
+                  double xres, double yres)
 {
   int larger = (cols > rows ? cols : rows);
   float * alphas = NULL;

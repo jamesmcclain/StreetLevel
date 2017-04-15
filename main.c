@@ -33,37 +33,57 @@
 #include <inttypes.h>
 #include <sys/time.h>
 #include "rasterio.h"
-#include "viewshed.h"
+#include "opencl.h"
+#include "viewshed_cpu.h"
+#include "viewshed_cl.h"
 
 
 int main(int argc, char ** argv)
 {
-  float * src, * dst;
-  uint32_t cols, rows;
-  double transform[6];
   char * projection;
+  double transform[6];
+  float * src, * dst;
+  int devices;
+  opencl_struct info[4];
   struct timeval before, after;
+  uint32_t cols, rows;
 
-  /* if (argc < 3) */
-  /*   { */
-  /*     fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__); */
-  /*     exit(-1); */
-  /*   } */
+  if (argc < 3)
+    {
+      fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
 
-  opencl_init();
+  // Initialize
+  opencl_init(4, &devices, info);
   rasterio_init();
 
-  /* load(argv[1], &cols, &rows, transform, &projection, &src); */
-  /* dst = calloc(cols * rows, sizeof(float)); */
-  /* gettimeofday(&before, NULL); */
-  /* viewshed(src, dst, cols, rows, 4609, 3073, 2000.0, x_resolution(transform), y_resolution(transform)); */
-  /* gettimeofday(&after, NULL); */
-  /* dump(argv[2], cols, rows, transform, projection, dst); */
-  /* fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec)); */
+  // Load
+  load(argv[1], &cols, &rows, transform, &projection, &src);
+  dst = calloc(cols * rows, sizeof(float));
 
-  /* free(projection); */
-  /* free(src); */
-  /* free(dst); */
+  // Compute
+  gettimeofday(&before, NULL);
+  viewshed_cl(devices, info,
+              src, dst,
+              cols, rows,
+              4608, 3072, 2000.0,
+              x_resolution(transform), y_resolution(transform));
+  /* viewshed_cpu(src, dst, */
+  /*              cols, rows, */
+  /*              4609, 3073, 2000.0, */
+  /*              x_resolution(transform), y_resolution(transform)); */
+  gettimeofday(&after, NULL);
+  fprintf(stdout, "%ld μs\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
+
+
+  // Output
+  dump(argv[2], cols, rows, transform, projection, dst);
+
+  // Cleanup
+  free(projection);
+  free(src);
+  free(dst);
 
   return 0;
 }
