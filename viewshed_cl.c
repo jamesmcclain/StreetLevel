@@ -85,9 +85,9 @@ void viewshed_cl(int devices,
                               &ret);
   ENSURE(ret, ret);
   dst_buffer = clCreateBuffer(info[0].context,
-                              CL_MEM_WRITE_ONLY,
+                              CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
                               sizeof(float) * cols * rows,
-                              NULL,
+                              (void *)dst,
                               &ret);
   ENSURE(ret, ret);
 
@@ -113,7 +113,7 @@ void viewshed_cl(int devices,
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
   size_t global_work_size = 1024;
   size_t offset = 0;
-  for (int i = 0; i < 8192; ++i, offset += 1024)
+  for (int i = 0; i < 8192; ++i, offset += global_work_size)
     {
       ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
                                     &offset, &global_work_size, NULL,
