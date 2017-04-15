@@ -74,7 +74,7 @@ int main(int argc, char ** argv)
   /*              4609, 3073, 2000.0, */
   /*              x_resolution(transform), y_resolution(transform)); */
   gettimeofday(&after, NULL);
-  fprintf(stdout, "%ld us\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
+  fprintf(stdout, "%ld μs\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
 
 
   // Output

@@ -69,7 +69,6 @@ void viewshed_cl(int devices,
 {
   const char * program_src;
   size_t program_src_length;
-  size_t global_work_size[0];
 
   cl_event event;
   cl_int ret;
@@ -112,10 +111,14 @@ void viewshed_cl(int devices,
 
   // Enqueue kernel
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
-  global_work_size[0] = 8192;
-  ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
-                                NULL, global_work_size, NULL,
-                                0, NULL, &event), ret);
+  size_t global_work_size = 1024;
+  size_t offset = 0;
+  for (int i = 0; i < 8192; ++i, offset += 1024)
+    {
+      ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
+                                    &offset, &global_work_size, NULL,
+                                    0, NULL, NULL), ret);
+    }
 
   // Read result from device
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueReadBuffer.html
@@ -123,14 +126,5 @@ void viewshed_cl(int devices,
                              dst_buffer,
                              CL_TRUE,
                              0, sizeof(float) * cols * rows, dst,
-                             1, &event, NULL), ret);
-
-  /* ret = clFlush(info[0].queue); */
-  /* ret = clFinish(info[0].queue); */
-  /* ret = clReleaseKernel(kernel); */
-  /* ret = clReleaseProgram(program); */
-  /* ret = clReleaseMemObject(src_buffer); */
-  /* ret = clReleaseMemObject(dst_buffer); */
-  /* ret = clReleaseCommandQueue(info[0].queue); */
-  /* ret = clReleaseContext(info[0].context); */
+                             0, NULL, NULL), ret);
 }

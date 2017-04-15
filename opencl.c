@@ -59,8 +59,9 @@ void opencl_init(int N, int * n, opencl_struct * info)
       cl_uint num_devices;
 
       // Query Devices
-      clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_CPU, 0, NULL, &num_devices);
-      clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_CPU, MIN(num_devices, N), devices, &num_devices);
+      ret = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
+      ret |= clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, MIN(num_devices, N), devices, &num_devices);
+      if (ret) num_devices = 0;
 
       // Contexts and Command Queues
       for (int j = 0; j < num_devices; ++j, ++(*n))

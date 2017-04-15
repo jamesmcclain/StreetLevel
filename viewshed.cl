@@ -31,7 +31,7 @@ int xy_to_vanilla_index(int cols, int x, int y)
   return (y*cols) + x;
 }
 
-__kernel void viewshed(__constant float * src,
+__kernel void viewshed(__global float * src,
                        __global float * dst)
 {
   int cols = 9216;
