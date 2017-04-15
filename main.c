@@ -29,6 +29,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <stdio.h>
 #include <inttypes.h>
 #include <sys/time.h>
@@ -81,6 +82,7 @@ int main(int argc, char ** argv)
   dump(argv[2], cols, rows, transform, projection, dst);
 
   // Cleanup
+  opencl_finit(devices, info);
   free(projection);
   free(src);
   free(dst);

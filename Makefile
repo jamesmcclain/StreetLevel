@@ -20,6 +20,7 @@ main.o: main.c *.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
 test: streetlevel
+	rm -f /tmp/viewshed.tif /tmp/viewshed.tif.aux.xml
 	streetlevel /tmp/ned.tif /tmp/viewshed.tif
 
 valgrind: streetlevel

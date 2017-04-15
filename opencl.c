@@ -75,3 +75,18 @@ void opencl_init(int N, int * n, opencl_struct * info)
         }
     }
 }
+
+void opencl_finit(int n, opencl_struct * info)
+{
+  cl_int ret;
+
+  for (int i = 0; i < n; ++i)
+    {
+      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clFinish.html
+      ENSURE(clFinish(info[i].queue), ret);
+      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseCommandQueue.html
+      ENSURE(clReleaseCommandQueue(info[i].queue), ret);
+      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseContext.html
+      ENSURE(clReleaseContext(info[i].context), ret);
+    }
+}

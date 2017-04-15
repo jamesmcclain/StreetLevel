@@ -85,9 +85,9 @@ void viewshed_cl(int devices,
                               &ret);
   ENSURE(ret, ret);
   dst_buffer = clCreateBuffer(info[0].context,
-                              CL_MEM_WRITE_ONLY,
+                              CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
                               sizeof(float) * cols * rows,
-                              NULL,
+                              (void *)dst,
                               &ret);
   ENSURE(ret, ret);
 
@@ -111,14 +111,10 @@ void viewshed_cl(int devices,
 
   // Enqueue kernel
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
-  size_t global_work_size = 1024;
-  size_t offset = 0;
-  for (int i = 0; i < 8192; ++i, offset += 1024)
-    {
-      ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
-                                    &offset, &global_work_size, NULL,
-                                    0, NULL, NULL), ret);
-    }
+  size_t global_work_size = 8192;
+  ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
+                                0, &global_work_size, NULL,
+                                0, NULL, NULL), ret);
 
   // Read result from device
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueReadBuffer.html
@@ -127,4 +123,12 @@ void viewshed_cl(int devices,
                              CL_TRUE,
                              0, sizeof(float) * cols * rows, dst,
                              0, NULL, NULL), ret);
+
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseKernel.html
+  ENSURE(clReleaseKernel(kernel), ret);
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseProgram.html
+  ENSURE(clReleaseProgram(program), ret);
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseMemObject.html
+  ENSURE(clReleaseMemObject(src_buffer), ret);
+  ENSURE(clReleaseMemObject(dst_buffer), ret);
 }
