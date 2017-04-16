@@ -64,7 +64,10 @@ int xy_to_vanilla_index(int cols, int x, int y)
 }
 
 __kernel void viewshed(__global float * src,
-                       __global float * dst)
+                       __global float * dst,
+                       __global float * alphas,
+                       int start_col,
+                       int stop_col)
 {
   int cols = 9216;
   int rows = 6144;
@@ -78,24 +81,25 @@ __kernel void viewshed(__global float * src,
   float viewHeight = 2000.0;
   float dy = ((float)(row - y)) / (cols - x);
   float dm = sqrt(xres*xres + dy*dy*yres*yres);
-  float alpha = -INFINITY;
-  float current_y = convert_float(y);
-  float current_distance = 0.0;
+  float current_y = y + ((start_col-x)*dy);
+  float current_distance = (start_col-x)*dm;
+  float alpha;
 
-  if (row < rows)
+  if (start_col == x) alpha = -INFINITY;
+  else alpha = alphas[row];
+
+  for (int col = start_col; col < stop_col; ++col, current_y += dy, current_distance += dm)
     {
-      for (int col = x; col < cols; ++col, current_y += dy, current_distance += dm)
-        {
-          int index = xy_to_fancy_index(cols, col, convert_int(current_y));
-          float elevation = src[index] - viewHeight;
-          float angle = elevation / current_distance;
+      int index = xy_to_fancy_index(cols, col, convert_int(current_y));
+      float elevation = src[index] - viewHeight;
+      float angle = elevation / current_distance;
 
-          if (alpha < angle)
-            {
-              index = xy_to_vanilla_index(cols, col, convert_int(current_y));
-              alpha = angle;
-              dst[index] = 1.0;
-            }
+      if (alpha < angle)
+        {
+          index = xy_to_vanilla_index(cols, col, convert_int(current_y));
+          alpha = angle;
+          dst[index] = 1.0;
         }
     }
+  alphas[row] = alpha;
 }
