@@ -70,7 +70,6 @@ void viewshed_cl(int devices,
   const char * program_src;
   size_t program_src_length;
 
-  cl_event event;
   cl_int ret;
   cl_mem src_buffer, dst_buffer;
   cl_program program;
