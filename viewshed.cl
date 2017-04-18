@@ -79,27 +79,38 @@ __kernel void viewshed(__global float * src,
   int x = 4608;
   int y = 3072;
   float viewHeight = 2000.0;
-  float dy = ((float)(row - y)) / (cols - x);
-  float dm = sqrt(xres*xres + dy*dy*yres*yres);
-  float current_y = y + ((start_col-x)*dy);
-  float current_distance = (start_col-x)*dm;
-  float alpha;
 
-  if (start_col == x) alpha = -INFINITY;
-  else alpha = alphas[row];
+  // The number of steps between integral last-rows
+  int steps = convert_int(((float)(cols-x))/(stop_col-x));
 
-  for (int col = start_col; col < stop_col; ++col, current_y += dy, current_distance += dm)
+  // If this ray-chunk does not overlap others too much, then compute it.
+  if (row % steps == 0)
     {
-      int index = xy_to_fancy_index(cols, col, convert_int(current_y));
-      float elevation = src[index] - viewHeight;
-      float angle = elevation / current_distance;
+      float dy = ((float)(row - y)) / (cols - x);
+      float dm = sqrt(xres*xres + dy*dy*yres*yres);
+      float current_y = y + ((start_col-x)*dy);
+      float current_distance = (start_col-x)*dm;
+      float alpha;
 
-      if (alpha < angle)
+      if (start_col == x) alpha = -INFINITY;
+      else alpha = alphas[row];
+
+      for (int col = start_col; col < stop_col; ++col, current_y += dy, current_distance += dm)
         {
-          index = xy_to_vanilla_index(cols, col, convert_int(current_y));
-          alpha = angle;
-          dst[index] = 1.0;
+          int index = xy_to_fancy_index(cols, col, convert_int(current_y));
+          float elevation = src[index] - viewHeight;
+          float angle = elevation / current_distance;
+
+          if (alpha < angle)
+            {
+              index = xy_to_vanilla_index(cols, col, convert_int(current_y));
+              alpha = angle;
+              dst[index] = 1.0;
+            }
         }
+
+      // Save alpha values for this ray-chunk and others that were not computed.
+      for (int i = row; (i < row + steps) && (i < rows); ++i)
+        alphas[i] = alpha;
     }
-  alphas[row] = alpha;
 }
