@@ -64,19 +64,18 @@ void viewshed_cl(int devices,
                  const opencl_struct * info,
                  const float * src, float * dst,
                  int cols, int rows,
-                 int x, int y, int z,
+                 int x, int y, float z,
                  double xres, double yres)
 {
   const char * program_src;
   size_t program_src_length;
 
-  cl_event event;
   cl_int ret;
-  cl_mem src_buffer, dst_buffer;
+  cl_mem src_buffer, dst_buffer, alphas;
   cl_program program;
   cl_kernel kernel;
 
-  // Create source, destination buffers
+  // Create source, destination, work buffers
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateBuffer.html
   src_buffer = clCreateBuffer(info[0].context,
                               CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
@@ -89,6 +88,12 @@ void viewshed_cl(int devices,
                               sizeof(float) * cols * rows,
                               (void *)dst,
                               &ret);
+  ENSURE(ret, ret);
+  alphas = clCreateBuffer(info[0].context,
+                          CL_MEM_READ_WRITE,
+                          sizeof(float) * rows,
+                          NULL,
+                          &ret);
   ENSURE(ret, ret);
 
   // Load, build program
@@ -108,13 +113,24 @@ void viewshed_cl(int devices,
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetKernelArg.html
   ENSURE(clSetKernelArg(kernel, 0, sizeof(cl_mem), &src_buffer), ret);
   ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_mem), &dst_buffer), ret);
+  ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_mem), &alphas), ret);
 
-  // Enqueue kernel
-  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
-  size_t global_work_size = 8192;
-  ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
-                                0, &global_work_size, NULL,
-                                0, NULL, NULL), ret);
+  // Enqueue kernel once per column of tiles
+  size_t global_work_size = rows;
+  for (cl_int start_col = x, width = 1; start_col < cols; start_col += width)
+    {
+      if (start_col == x) for (; (start_col + width) % TILESIZE; ++width);
+      else width = TILESIZE;
+
+      cl_int stop_col = start_col + width;
+
+      ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &start_col), ret);
+      ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &stop_col), ret);
+      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
+      ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
+                                    NULL, &global_work_size, NULL,
+                                    0, NULL, NULL), ret);
+    }
 
   // Read result from device
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueReadBuffer.html

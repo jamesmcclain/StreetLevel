@@ -1,8 +1,9 @@
 GDAL_CFLAGS ?= -I$(HOME)/local/gdal/include
 GDAL_LDFLAGS ?= -L$(HOME)/local/gdal/lib -lgdal -lopenjp2
-CFLAGS ?= -march=native -mtune=native -Ofast -g
+OPENCL_LDFLAGS ?= -lOpenCL
+CFLAGS ?= -Wall -march=native -mtune=native -Ofast -g
 CFLAGS += -std=c11 $(GDAL_CFLAGS)
-LDFLAGS += $(GDAL_LDFLAGS) -lm -lOpenCL
+LDFLAGS += $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -lm
 
 
 all: streetlevel
