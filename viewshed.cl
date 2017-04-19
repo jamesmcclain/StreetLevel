@@ -67,24 +67,24 @@ __kernel void viewshed(__global float * src,
                        __global float * dst,
                        __global float * alphas,
                        int start_col,
-                       int stop_col)
+                       int stop_col,
+                       int this_steps,
+                       int that_steps)
 {
   int cols = 9216;
   int rows = 6144;
   float xres = 305.748113;
   float yres = 305.748113;
 
-  int row = get_global_id(0);
+  int gid = get_global_id(0);
+  int row = gid * this_steps;
 
   int x = 4608;
   int y = 3072;
   float viewHeight = 2000.0;
 
-  // The number of steps between integral last-rows
-  int steps = convert_int(((float)(cols-x))/(stop_col-x));
-
   // If this ray-chunk does not overlap others too much, then compute it.
-  if (row % steps == 0)
+  if (row < rows)
     {
       float dy = ((float)(row - y)) / (cols - x);
       float dm = sqrt(xres*xres + dy*dy*yres*yres);
@@ -92,8 +92,8 @@ __kernel void viewshed(__global float * src,
       float current_distance = (start_col-x)*dm;
       float alpha;
 
-      if (start_col == x) alpha = -INFINITY;
-      else alpha = alphas[row];
+      if (that_steps == -1) alpha = -INFINITY;
+      else alpha = alphas[row / that_steps];
 
       for (int col = start_col; col < stop_col; ++col, current_y += dy, current_distance += dm)
         {
@@ -109,8 +109,7 @@ __kernel void viewshed(__global float * src,
             }
         }
 
-      // Save alpha values for this ray-chunk and others that were not computed.
-      for (int i = row; (i < row + steps) && (i < rows); ++i)
-        alphas[i] = alpha;
+      // Save the alpha for this ray-chunk
+      alphas[gid] = alpha;
     }
 }

@@ -51,7 +51,7 @@ char * readfile(const char * filename)
   int fd, ret;
   struct stat buf;
 
-  fd = open("./viewshed.cl", O_RDONLY);
+  fd = open(filename, O_RDONLY);
   ENSURE(fstat(fd, &buf), ret);
   str = calloc(buf.st_size + 1, 1);
   ret = read(fd, str, buf.st_size);
@@ -115,17 +115,26 @@ void viewshed_cl(int devices,
   ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_mem), &dst_buffer), ret);
   ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_mem), &alphas), ret);
 
-  // Enqueue kernel once per column of tiles
-  size_t global_work_size = rows;
+  // Enqueue kernel the correct number of times per column of tiles
+  size_t global_work_size = 0;
+  cl_int this_steps = -1;
+  cl_int that_steps = -1;
   for (cl_int start_col = x, width = 1; start_col < cols; start_col += width)
     {
       if (start_col == x) for (; (start_col + width) % TILESIZE; ++width);
-      else width = TILESIZE;
+      else width = (TILESIZE/1);
 
       cl_int stop_col = start_col + width;
+      that_steps = this_steps;
+      this_steps = (int)(((float)(cols-x))/(stop_col-x));
+      global_work_size = rows / this_steps;
+      /* fprintf(stderr, "that_steps=%d this_steps=%d\n", that_steps, this_steps); */
 
       ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &start_col), ret);
       ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &stop_col), ret);
+      ENSURE(clSetKernelArg(kernel, 5, sizeof(cl_int), &this_steps), ret);
+      ENSURE(clSetKernelArg(kernel, 6, sizeof(cl_int), &that_steps), ret);
+
       // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
       ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
                                     NULL, &global_work_size, NULL,
