@@ -38,9 +38,6 @@
 #include "opencl.h"
 
 
-#define MIN(a,b) (a < b ? a: b)
-
-
 void opencl_init(int N, int * n, opencl_struct * info)
 {
   cl_int ret;
@@ -51,7 +48,7 @@ void opencl_init(int N, int * n, opencl_struct * info)
 
   // Query Platforms
   ENSURE(clGetPlatformIDs(0, NULL, &num_platforms), ret);
-  ENSURE(clGetPlatformIDs(MIN(num_platforms, N), platforms, &num_platforms), ret);
+  ENSURE(clGetPlatformIDs(SMALLER(num_platforms, N), platforms, &num_platforms), ret);
 
   for (int i = 0; i < num_platforms; ++i)
     {
@@ -60,7 +57,7 @@ void opencl_init(int N, int * n, opencl_struct * info)
 
       // Query Devices
       ret = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
-      ret |= clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, MIN(num_devices, N), devices, &num_devices);
+      ret |= clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, SMALLER(num_devices, N), devices, &num_devices);
       if (ret) num_devices = 0;
 
       // Contexts and Command Queues
