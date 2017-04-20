@@ -66,40 +66,42 @@ int xy_to_vanilla_index(int cols, int x, int y)
 __kernel void viewshed(__global float * src,
                        __global float * dst,
                        __global float * alphas,
-                       int start_col,
-                       int stop_col)
+                       int cols, int rows,
+                       int x, int y, float viewHeight,
+                       float xres, float yres,
+                       int start_col, int stop_col,
+                       int this_steps, int that_steps)
 {
-  int cols = 9216;
-  int rows = 6144;
-  float xres = 305.748113;
-  float yres = 305.748113;
+  int gid = get_global_id(0);
+  int row = gid * this_steps;
 
-  int row = get_global_id(0);
-
-  int x = 4608;
-  int y = 3072;
-  float viewHeight = 2000.0;
-  float dy = ((float)(row - y)) / (cols - x);
-  float dm = sqrt(xres*xres + dy*dy*yres*yres);
-  float current_y = y + ((start_col-x)*dy);
-  float current_distance = (start_col-x)*dm;
-  float alpha;
-
-  if (start_col == x) alpha = -INFINITY;
-  else alpha = alphas[row];
-
-  for (int col = start_col; col < stop_col; ++col, current_y += dy, current_distance += dm)
+  // If this ray-chunk does not overlap others too much, then compute it.
+  if (row < rows)
     {
-      int index = xy_to_fancy_index(cols, col, convert_int(current_y));
-      float elevation = src[index] - viewHeight;
-      float angle = elevation / current_distance;
+      float dy = ((float)(row - y)) / (cols - x);
+      float dm = sqrt(xres*xres + dy*dy*yres*yres);
+      float current_y = y + ((start_col-x)*dy);
+      float current_distance = (start_col-x)*dm;
+      float alpha;
 
-      if (alpha < angle)
+      if (that_steps == -1) alpha = -INFINITY;
+      else alpha = alphas[row / that_steps];
+
+      for (int col = start_col; col < stop_col; ++col, current_y += dy, current_distance += dm)
         {
-          index = xy_to_vanilla_index(cols, col, convert_int(current_y));
-          alpha = angle;
-          dst[index] = 1.0;
+          int index = xy_to_fancy_index(cols, col, convert_int(current_y));
+          float elevation = src[index] - viewHeight;
+          float angle = elevation / current_distance;
+
+          if (alpha < angle)
+            {
+              index = xy_to_vanilla_index(cols, col, convert_int(current_y));
+              alpha = angle;
+              dst[index] = 1.0;
+            }
         }
+
+      // Save the alpha for this ray-chunk
+      alphas[gid] = alpha;
     }
-  alphas[row] = alpha;
 }
