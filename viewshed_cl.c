@@ -75,6 +75,19 @@ void viewshed_cl(int devices,
   cl_program program;
   cl_kernel kernel;
 
+  size_t global_work_size = 0;
+
+  cl_int _cols = cols;
+  cl_int _rows = rows;
+  cl_int _x = x;
+  cl_int _y = y;
+  cl_float _z = z;
+  cl_float _xres = xres;
+  cl_float _yres = yres;
+  cl_int flip;
+  cl_int this_steps = -1;
+  cl_int that_steps = -1;
+
   // Create source, destination, work buffers
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateBuffer.html
   src_buffer = clCreateBuffer(info[0].context,
@@ -115,27 +128,20 @@ void viewshed_cl(int devices,
   ENSURE(clSetKernelArg(kernel, 0, sizeof(cl_mem), &src_buffer), ret);
   ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_mem), &dst_buffer), ret);
   ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_mem), &alphas), ret);
-  {
-    cl_int _cols = cols;
-    cl_int _rows = rows;
-    cl_int _x = x;
-    cl_int _y = y;
-    cl_float _z = z;
-    cl_float _xres = xres;
-    cl_float _yres = yres;
-    ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &_cols), ret);
-    ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &_rows), ret);
-    ENSURE(clSetKernelArg(kernel, 5, sizeof(cl_int), &_x), ret);
-    ENSURE(clSetKernelArg(kernel, 6, sizeof(cl_int), &_y), ret);
-    ENSURE(clSetKernelArg(kernel, 7, sizeof(cl_float), &_z), ret);
-    ENSURE(clSetKernelArg(kernel, 8, sizeof(cl_float), &_xres), ret);
-    ENSURE(clSetKernelArg(kernel, 9, sizeof(cl_float), &_yres), ret);
-  }
+  ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &_cols), ret);
+  ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &_rows), ret);
+  ENSURE(clSetKernelArg(kernel, 5, sizeof(cl_int), &_x), ret);
+  ENSURE(clSetKernelArg(kernel, 6, sizeof(cl_int), &_y), ret);
+  ENSURE(clSetKernelArg(kernel, 7, sizeof(cl_float), &_z), ret);
+  ENSURE(clSetKernelArg(kernel, 8, sizeof(cl_float), &_xres), ret);
+  ENSURE(clSetKernelArg(kernel, 9, sizeof(cl_float), &_yres), ret);
 
-  // Enqueue kernel the correct number of times per column of tiles
-  size_t global_work_size = 0;
-  cl_int this_steps = -1;
-  cl_int that_steps = -1;
+  // East: Enqueue kernel the correct number of times per column of tiles
+  global_work_size = 0;
+  this_steps = -1;
+  that_steps = -1;
+  flip = 0;
+  ENSURE(clSetKernelArg(kernel, 10, sizeof(cl_int), &flip), ret);
   for (cl_int start_col = x, width = 1; start_col < cols; start_col += width)
     {
       if (start_col == x) for (; (start_col + width) % TILESIZE; ++width);
@@ -145,14 +151,40 @@ void viewshed_cl(int devices,
       that_steps = this_steps;
       this_steps = (int)(((float)(cols-x))/(stop_col-x));
       global_work_size = rows / this_steps;
-      /* fprintf(stderr, "work_size=%d width=%d that_steps=%d this_steps=%d\n", global_work_size, width, that_steps, this_steps); */
 
-      ENSURE(clSetKernelArg(kernel, 10, sizeof(cl_int), &start_col), ret);
-      ENSURE(clSetKernelArg(kernel, 11, sizeof(cl_int), &stop_col), ret);
-      ENSURE(clSetKernelArg(kernel, 12, sizeof(cl_int), &this_steps), ret);
-      ENSURE(clSetKernelArg(kernel, 13, sizeof(cl_int), &that_steps), ret);
+      ENSURE(clSetKernelArg(kernel, 11, sizeof(cl_int), &start_col), ret);
+      ENSURE(clSetKernelArg(kernel, 12, sizeof(cl_int), &stop_col), ret);
+      ENSURE(clSetKernelArg(kernel, 13, sizeof(cl_int), &this_steps), ret);
+      ENSURE(clSetKernelArg(kernel, 14, sizeof(cl_int), &that_steps), ret);
 
       // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
+      ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
+                                    NULL, &global_work_size, NULL,
+                                    0, NULL, NULL), ret);
+    }
+
+  // West: Enqueue kernel the correct number of times per column of tiles
+  global_work_size = 0;
+  this_steps = -1;
+  that_steps = -1;
+  flip = 1;
+  _x = cols-x;
+  ENSURE(clSetKernelArg(kernel, 5, sizeof(cl_int), &_x), ret);
+  ENSURE(clSetKernelArg(kernel, 10, sizeof(cl_int), &flip), ret);
+  for (cl_int start_col = _x, width = 1; start_col < cols; start_col += width)
+    {
+      if (start_col == _x) for (; (start_col + width) % TILESIZE; ++width);
+      else width = TILESIZE;
+
+      cl_int stop_col = SMALLER(start_col + width, cols);
+      that_steps = this_steps;
+      this_steps = (int)(((float)(cols-_x))/(stop_col-_x));
+      global_work_size = rows / this_steps;
+
+      ENSURE(clSetKernelArg(kernel, 11, sizeof(cl_int), &start_col), ret);
+      ENSURE(clSetKernelArg(kernel, 12, sizeof(cl_int), &stop_col), ret);
+      ENSURE(clSetKernelArg(kernel, 13, sizeof(cl_int), &this_steps), ret);
+      ENSURE(clSetKernelArg(kernel, 14, sizeof(cl_int), &that_steps), ret);
       ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
                                     NULL, &global_work_size, NULL,
                                     0, NULL, NULL), ret);

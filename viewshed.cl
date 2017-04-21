@@ -69,6 +69,7 @@ __kernel void viewshed(__global float * src,
                        int cols, int rows,
                        int x, int y, float viewHeight,
                        float xres, float yres,
+                       int flip,
                        int start_col, int stop_col,
                        int this_steps, int that_steps)
 {
@@ -80,8 +81,8 @@ __kernel void viewshed(__global float * src,
     {
       float dy = ((float)(row - y)) / (cols - x);
       float dm = sqrt(xres*xres + dy*dy*yres*yres);
-      float current_y = y + ((start_col-x)*dy);
-      float current_distance = (start_col-x)*dm;
+      float current_y = y + ((start_col - x)*dy);
+      float current_distance = (start_col - x)*dm;
       float alpha;
 
       if (that_steps == -1) alpha = -INFINITY;
@@ -89,13 +90,16 @@ __kernel void viewshed(__global float * src,
 
       for (int col = start_col; col < stop_col; ++col, current_y += dy, current_distance += dm)
         {
-          int index = xy_to_fancy_index(cols, col, convert_int(current_y));
+          int index;
+          if (!flip) index = xy_to_fancy_index(cols, col, convert_int(current_y));
+          else if (flip) index = xy_to_fancy_index(cols, (cols-col-1), convert_int(current_y));
           float elevation = src[index] - viewHeight;
           float angle = elevation / current_distance;
 
           if (alpha < angle)
             {
-              index = xy_to_vanilla_index(cols, col, convert_int(current_y));
+              if (!flip) index = xy_to_vanilla_index(cols, col, convert_int(current_y));
+              else if (flip) index = xy_to_vanilla_index(cols, (cols-col-1), convert_int(current_y));
               alpha = angle;
               dst[index] = 1.0;
             }
