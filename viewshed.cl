@@ -76,6 +76,9 @@ __kernel void viewshed(__global float * src,
   int gid = get_global_id(0);
   int row = gid * this_steps;
 
+  if (!(row < rows) && (row - this_steps < rows))
+    row = rows-1;
+
   // If this ray-chunk does not overlap others too much, then compute it.
   if (row < rows)
     {

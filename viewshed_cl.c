@@ -176,7 +176,7 @@ void viewshed_cl(int devices,
           cl_int stop_col = SMALLER(start_col + width, _cols);
           that_steps = this_steps;
           this_steps = (int)(((float)(_cols-_x))/(stop_col-_x));
-          global_work_size = _rows / this_steps;
+          global_work_size = (_rows / this_steps) + 1;
 
           ENSURE(clSetKernelArg(kernel, 12, sizeof(cl_int), &start_col), ret);
           ENSURE(clSetKernelArg(kernel, 13, sizeof(cl_int), &stop_col), ret);
