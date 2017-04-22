@@ -69,12 +69,15 @@ __kernel void viewshed(__global float * src,
                        int cols, int rows,
                        int x, int y, float viewHeight,
                        float xres, float yres,
-                       int flip,
+                       int flip, int transpose,
                        int start_col, int stop_col,
                        int this_steps, int that_steps)
 {
   int gid = get_global_id(0);
   int row = gid * this_steps;
+
+  if (!(row < rows) && (row - this_steps < rows))
+    row = rows-1;
 
   // If this ray-chunk does not overlap others too much, then compute it.
   if (row < rows)
@@ -82,30 +85,34 @@ __kernel void viewshed(__global float * src,
       float dy = ((float)(row - y)) / (cols - x);
       float dm = sqrt(xres*xres + dy*dy*yres*yres);
       float current_y = y + ((start_col - x)*dy);
-      float current_distance = (start_col - x)*dm;
+      float current_distance = (1/MAXFLOAT) + ((start_col - x)*dm);
       float alpha;
 
-      if (that_steps == -1) alpha = -INFINITY;
-      else alpha = alphas[row / that_steps];
+      if (start_col == x) alpha = -INFINITY;
+      else alpha = alphas[row];
 
       for (int col = start_col; col < stop_col; ++col, current_y += dy, current_distance += dm)
         {
           int index;
-          if (!flip) index = xy_to_fancy_index(cols, col, convert_int(current_y));
-          else if (flip) index = xy_to_fancy_index(cols, (cols-col-1), convert_int(current_y));
+          if (!flip && !transpose) index = xy_to_fancy_index(cols, col, convert_int(current_y));
+          else if (flip && !transpose) index = xy_to_fancy_index(cols, (cols-1-col), convert_int(current_y));
+          else if (!flip && transpose) index = xy_to_fancy_index(rows, convert_int(current_y), col);
+          else if (flip && transpose) index = xy_to_fancy_index(rows, convert_int(current_y), (cols-1-col));
           float elevation = src[index] - viewHeight;
           float angle = elevation / current_distance;
 
           if (alpha < angle)
             {
-              if (!flip) index = xy_to_vanilla_index(cols, col, convert_int(current_y));
-              else if (flip) index = xy_to_vanilla_index(cols, (cols-col-1), convert_int(current_y));
+              if (!flip && !transpose) index = xy_to_vanilla_index(cols, col, convert_int(current_y));
+              else if (flip && !transpose) index = xy_to_vanilla_index(cols, (cols-col-1), convert_int(current_y));
+              else if (!flip && transpose) index = xy_to_vanilla_index(rows, convert_int(current_y), col);
+              else if (flip && transpose) index = xy_to_vanilla_index(rows, convert_int(current_y), (cols-col-1));
               alpha = angle;
               dst[index] = 1.0;
             }
         }
 
-      // Save the alpha for this ray-chunk
-      alphas[gid] = alpha;
+      for (int i = row; (i < row + this_steps) && (i < rows); ++i)
+        alphas[i] = alpha;
     }
 }
