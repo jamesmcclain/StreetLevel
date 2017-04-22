@@ -69,7 +69,7 @@ __kernel void viewshed(__global float * src,
                        int cols, int rows,
                        int x, int y, float viewHeight,
                        float xres, float yres,
-                       int flip,
+                       int flip, int transpose,
                        int start_col, int stop_col,
                        int this_steps, int that_steps)
 {
@@ -91,15 +91,19 @@ __kernel void viewshed(__global float * src,
       for (int col = start_col; col < stop_col; ++col, current_y += dy, current_distance += dm)
         {
           int index;
-          if (!flip) index = xy_to_fancy_index(cols, col, convert_int(current_y));
-          else if (flip) index = xy_to_fancy_index(cols, (cols-col-1), convert_int(current_y));
+          if (!flip && !transpose) index = xy_to_fancy_index(cols, col, convert_int(current_y));
+          else if (flip && !transpose) index = xy_to_fancy_index(cols, (cols-col-1), convert_int(current_y));
+          else if (!flip && transpose) index = xy_to_fancy_index(rows, convert_int(current_y), col);
+          else if (flip && transpose) index = xy_to_fancy_index(rows, convert_int(current_y), (cols-col-1));
           float elevation = src[index] - viewHeight;
           float angle = elevation / current_distance;
 
           if (alpha < angle)
             {
-              if (!flip) index = xy_to_vanilla_index(cols, col, convert_int(current_y));
-              else if (flip) index = xy_to_vanilla_index(cols, (cols-col-1), convert_int(current_y));
+              if (!flip && !transpose) index = xy_to_vanilla_index(cols, col, convert_int(current_y));
+              else if (flip && !transpose) index = xy_to_vanilla_index(cols, (cols-col-1), convert_int(current_y));
+              else if (!flip && transpose) index = xy_to_vanilla_index(rows, convert_int(current_y), col);
+              else if (flip && transpose) index = xy_to_vanilla_index(rows, convert_int(current_y), (cols-col-1));
               alpha = angle;
               dst[index] = 1.0;
             }
