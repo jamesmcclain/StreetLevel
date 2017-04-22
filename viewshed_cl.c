@@ -142,7 +142,7 @@ void viewshed_cl(int devices,
       else if (cardinal == 1) // South
         {
           flip = 0, transpose = 1;
-          _x = _y, _y = x, _cols = rows, _rows = cols;
+          _x = (_y-1), _y = x, _cols = rows, _rows = cols;
         }
       else if (cardinal == 2) // West
         {
