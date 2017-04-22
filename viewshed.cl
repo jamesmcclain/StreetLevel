@@ -85,19 +85,19 @@ __kernel void viewshed(__global float * src,
       float dy = ((float)(row - y)) / (cols - x);
       float dm = sqrt(xres*xres + dy*dy*yres*yres);
       float current_y = y + ((start_col - x)*dy);
-      float current_distance = (start_col - x)*dm;
+      float current_distance = (1/MAXFLOAT) + ((start_col - x)*dm);
       float alpha;
 
-      if (that_steps == -1) alpha = -INFINITY;
-      else alpha = alphas[row / that_steps];
+      if (start_col == x) alpha = -INFINITY;
+      else alpha = alphas[row];
 
       for (int col = start_col; col < stop_col; ++col, current_y += dy, current_distance += dm)
         {
           int index;
           if (!flip && !transpose) index = xy_to_fancy_index(cols, col, convert_int(current_y));
-          else if (flip && !transpose) index = xy_to_fancy_index(cols, (cols-col-1), convert_int(current_y));
+          else if (flip && !transpose) index = xy_to_fancy_index(cols, (cols-1-col), convert_int(current_y));
           else if (!flip && transpose) index = xy_to_fancy_index(rows, convert_int(current_y), col);
-          else if (flip && transpose) index = xy_to_fancy_index(rows, convert_int(current_y), (cols-col-1));
+          else if (flip && transpose) index = xy_to_fancy_index(rows, convert_int(current_y), (cols-1-col));
           float elevation = src[index] - viewHeight;
           float angle = elevation / current_distance;
 
@@ -112,7 +112,7 @@ __kernel void viewshed(__global float * src,
             }
         }
 
-      // Save the alpha for this ray-chunk
-      alphas[gid] = alpha;
+      for (int i = row; (i < row + this_steps) && (i < rows); ++i)
+        alphas[i] = alpha;
     }
 }

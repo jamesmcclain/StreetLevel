@@ -101,7 +101,7 @@ void viewshed_cl(int devices,
   ENSURE(ret, ret);
   alphas = clCreateBuffer(info[0].context,
                           CL_MEM_READ_WRITE,
-                          sizeof(float) * rows,
+                          sizeof(float) * LARGER(cols, rows),
                           NULL,
                           &ret);
   ENSURE(ret, ret);
@@ -131,31 +131,26 @@ void viewshed_cl(int devices,
 
   for (int cardinal = 0; cardinal < 4; ++cardinal)
     {
+      global_work_size = 0;
+      this_steps = that_steps = -1;
+
       if (cardinal == 0) // East
         {
-          global_work_size = 0;
-          this_steps = that_steps = -1;
           flip = 0, transpose = 0;
           _x = x, _y = y, _cols = cols, _rows = rows;
         }
       else if (cardinal == 1) // South
         {
-          global_work_size = 0;
-          this_steps = that_steps = -1;
           flip = 0, transpose = 1;
           _x = _y, _y = x, _cols = rows, _rows = cols;
         }
       else if (cardinal == 2) // West
         {
-          global_work_size = 0;
-          this_steps = that_steps = -1;
           flip = 1, transpose = 0;
           _x = cols-x, _y = rows-y, _cols = cols, _rows = rows;
         }
       else if (cardinal == 3) // North
         {
-          global_work_size = 0;
-          this_steps = that_steps = -1;
           flip = 1, transpose = 1;
           _x = rows-y, _y = cols-x, _cols = rows, _rows = cols;
         }

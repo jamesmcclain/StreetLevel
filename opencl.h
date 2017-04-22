@@ -36,6 +36,7 @@
 #include <CL/cl.h>
 
 #define SMALLER(a,b) (a < b ? a: b)
+#define LARGER(a,b) (a > b ? a: b)
 #define ENSURE(call, r) { if ((r = (call))) { fprintf(stderr, "Non-zero return code %d %s:%d\n", r, __FILE__, __LINE__); exit(-1); } }
 
 
