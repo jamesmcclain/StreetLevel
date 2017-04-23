@@ -147,12 +147,12 @@ void viewshed_cl(int devices,
       else if (cardinal == 2) // West
         {
           flip = 1, transpose = 0;
-          _x = cols-x, _y = rows-y, _cols = cols, _rows = rows;
+          _x = cols-x, _y = y, _cols = cols, _rows = rows;
         }
       else if (cardinal == 3) // North
         {
           flip = 1, transpose = 1;
-          _x = rows-y, _y = cols-x, _cols = rows, _rows = cols;
+          _x = rows-y, _y = x, _cols = rows, _rows = cols;
         }
 
       ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &_cols), ret);
