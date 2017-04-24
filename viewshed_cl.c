@@ -201,4 +201,5 @@ void viewshed_cl(int devices,
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseMemObject.html
   ENSURE(clReleaseMemObject(src_buffer), ret);
   ENSURE(clReleaseMemObject(dst_buffer), ret);
+  ENSURE(clReleaseMemObject(alphas), ret);
 }
