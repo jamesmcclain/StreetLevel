@@ -113,117 +113,35 @@ void viewshed_aux(const float * src, float * dst,
               float __attribute__ ((aligned)) current_y = y + ix * dy;
               float __attribute__ ((aligned)) current_distance = ix * dm;
 
-#if defined(__AVX__) && (TILESIZE == 32) && (REGISTERSIZE == 8)
-              if (width == 32)
+              for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
                 {
-                  float __attribute__((aligned (32))) elevations[32];
-                  float __attribute__((aligned (32))) distances[32];
-                  int vanilla_indices[32];
+                  int current_x;
+                  if (dir == EAST || dir == SOUTH) current_x = i + k;
+                  else if (dir == WEST || dir == NORTH) current_x = i - k;
+                  else BADDIR();
 
-                  // load elevations
-                  for (int k = 0; k < 32; ++k, current_y += dy, current_distance += dm)
+                  int fancy_index;
+                  if (dir == EAST || dir == WEST)
+                    fancy_index = xy_to_fancy_index(true_cols, current_x, (int)current_y);
+                  else if (dir == SOUTH || dir == NORTH)
+                    fancy_index = xy_to_fancy_index(true_cols, (int)current_y, current_x);
+                  else BADDIR();
+
+                  float curve = 6378137 * (1 - cos(current_distance / 6378137));
+                  float elevation = src[fancy_index] - viewHeight -curve;
+                  float angle = elevation / current_distance;
+
+                  if (alpha < angle)
                     {
-                      int current_x, current_y_int;
-
-                      if (dir == EAST)
-                        {
-                          current_x = i + k;
-                          current_y_int = (int)current_y;
-                        }
-                      else if (dir == SOUTH)
-                        {
-                          current_y_int = i + k;
-                          current_x = (int)current_y;
-                        }
-                      else if (dir == WEST)
-                        {
-                          current_x = i - k;
-                          current_y_int = (int)current_y;
-                        }
-                      else if (dir == NORTH)
-                        {
-                          current_y_int = i - k;
-                          current_x = (int)current_y;
-                        }
-                      else BADDIR();
-
-                      vanilla_indices[k] = xy_to_vanilla_index(true_cols, current_x, current_y_int);
-                      elevations[k] = src[xy_to_fancy_index(true_cols, current_x, current_y_int)]; // elevations
-                      distances[k] = current_distance; // distances
-                    }
-
-                  __asm__ __volatile(
-                                     "vbroadcastss 0x0(%0), %%ymm0 \n" // viewHeights
-                                     "vmovaps 0x0(%1), %%ymm1 \n" // raw elevations
-                                     "vmovaps 0x0(%2), %%ymm2 \n" // distances
-                                     "vmovaps 0x20(%1), %%ymm3 \n"
-                                     "vmovaps 0x20(%2), %%ymm4 \n"
-                                     "vmovaps 0x40(%1), %%ymm5 \n"
-                                     "vmovaps 0x40(%2), %%ymm6 \n"
-                                     "vmovaps 0x60(%1), %%ymm7 \n"
-                                     "vmovaps 0x60(%2), %%ymm8 \n"
-                                     "vsubps %%ymm0, %%ymm1, %%ymm1 \n" // elevations
-                                     "vsubps %%ymm0, %%ymm3, %%ymm3 \n"
-                                     "vsubps %%ymm0, %%ymm5, %%ymm5 \n"
-                                     "vsubps %%ymm0, %%ymm7, %%ymm7 \n"
-                                     "vdivps %%ymm2, %%ymm1, %%ymm1 \n" // angles
-                                     "vdivps %%ymm4, %%ymm3, %%ymm3 \n"
-                                     "vdivps %%ymm6, %%ymm5, %%ymm5 \n"
-                                     "vdivps %%ymm8, %%ymm7, %%ymm7 \n"
-                                     "vmovaps %%ymm1, 0x0(%1) \n" // store angles
-                                     "vmovaps %%ymm3, 0x20(%1) \n"
-                                     "vmovaps %%ymm5, 0x40(%1) \n"
-                                     "vmovaps %%ymm7, 0x60(%1) \n"
-                                     :
-                                     : "q"(&viewHeight), "q"(elevations), "q"(distances)
-                                     : "memory", "%ymm0", "%ymm1", "%ymm2", "%ymm3", "%ymm4", "%ymm5", "%ymm6", "%ymm7", "%ymm8"
-                                     );
-
-                  // write into target image
-                  for (int k = 0; k < 32; ++k)
-                    {
-                      float angle = elevations[k];
-                      int index = vanilla_indices[k];
-
-                      if (alpha < angle)
-                        {
-                          alpha = angle;
-                          dst[index] = 1.0;
-                        }
-                    }
-                }
-              else
-#endif
-                {
-                  for (int k = 0; k < width; ++k, current_y += dy, current_distance += dm)
-                    {
-                      int current_x;
-                      if (dir == EAST || dir == SOUTH) current_x = i + k;
-                      else if (dir == WEST || dir == NORTH) current_x = i - k;
-                      else BADDIR();
-
-                      int fancy_index;
+                      int index;
                       if (dir == EAST || dir == WEST)
-                        fancy_index = xy_to_fancy_index(true_cols, current_x, (int)current_y);
+                        index = xy_to_vanilla_index(true_cols, current_x, (int)current_y);
                       else if (dir == SOUTH || dir == NORTH)
-                        fancy_index = xy_to_fancy_index(true_cols, (int)current_y, current_x);
+                        index = xy_to_vanilla_index(true_cols, (int)current_y, current_x);
                       else BADDIR();
 
-                      float elevation = src[fancy_index] - viewHeight;
-                      float angle = elevation / current_distance;
-
-                      if (alpha < angle)
-                        {
-                          int index;
-                          if (dir == EAST || dir == WEST)
-                            index = xy_to_vanilla_index(true_cols, current_x, (int)current_y);
-                          else if (dir == SOUTH || dir == NORTH)
-                            index = xy_to_vanilla_index(true_cols, (int)current_y, current_x);
-                          else BADDIR();
-
-                          alpha = angle;
-                          dst[index] = 1.0;
-                        }
+                      alpha = angle;
+                      dst[index] = 1.0;
                     }
                 }
 

@@ -98,7 +98,8 @@ __kernel void viewshed(__global float * src,
           else if (flip && !transpose) index = xy_to_fancy_index(cols, (cols-1-col), convert_int(current_y));
           else if (!flip && transpose) index = xy_to_fancy_index(rows, convert_int(current_y), col);
           else if (flip && transpose) index = xy_to_fancy_index(rows, convert_int(current_y), (cols-1-col));
-          float elevation = src[index] - viewHeight;
+          float curve = 6378137 * (1 - cos(current_distance / 6378137));
+          float elevation = src[index] - viewHeight - curve;
           float angle = elevation / current_distance;
 
           if (alpha < angle)
