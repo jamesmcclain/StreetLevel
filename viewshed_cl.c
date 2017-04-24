@@ -75,15 +75,12 @@ void viewshed_cl(int devices,
   cl_program program;
   cl_kernel kernel;
 
-  size_t global_work_size = 0;
-
-  cl_int _cols, _rows, _x, _y;
+  cl_float _xres, _yres;
   cl_float _z = z;
-  cl_float _xres = xres;
-  cl_float _yres = yres;
+  cl_int _cols, _rows, _x, _y;
   cl_int flip, transpose;
-  cl_int this_steps = -1;
-  cl_int that_steps = -1;
+  cl_int this_steps, that_steps;
+  size_t global_work_size = 0;
 
   // Create source, destination, work buffers
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateBuffer.html
@@ -126,8 +123,6 @@ void viewshed_cl(int devices,
   ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_mem), &dst_buffer), ret);
   ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_mem), &alphas), ret);
   ENSURE(clSetKernelArg(kernel, 7, sizeof(cl_float), &_z), ret);
-  ENSURE(clSetKernelArg(kernel, 8, sizeof(cl_float), &_xres), ret);
-  ENSURE(clSetKernelArg(kernel, 9, sizeof(cl_float), &_yres), ret);
 
   for (int cardinal = 0; cardinal < 4; ++cardinal)
     {
@@ -138,27 +133,33 @@ void viewshed_cl(int devices,
         {
           flip = 0, transpose = 0;
           _x = x, _y = y, _cols = cols, _rows = rows;
+          _xres = xres, _yres = yres;
         }
       else if (cardinal == 1) // South
         {
           flip = 0, transpose = 1;
           _x = (_y-1), _y = x, _cols = rows, _rows = cols;
+          _xres = yres, _yres = xres;
         }
       else if (cardinal == 2) // West
         {
           flip = 1, transpose = 0;
           _x = cols-x, _y = y, _cols = cols, _rows = rows;
+          _xres = xres, _yres = yres;
         }
       else if (cardinal == 3) // North
         {
           flip = 1, transpose = 1;
           _x = rows-y, _y = x, _cols = rows, _rows = cols;
+          _xres = yres, _yres = xres;
         }
 
       ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &_cols), ret);
       ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &_rows), ret);
       ENSURE(clSetKernelArg(kernel, 5, sizeof(cl_int), &_x), ret);
       ENSURE(clSetKernelArg(kernel, 6, sizeof(cl_int), &_y), ret);
+      ENSURE(clSetKernelArg(kernel, 8, sizeof(cl_float), &_xres), ret);
+      ENSURE(clSetKernelArg(kernel, 9, sizeof(cl_float), &_yres), ret);
       ENSURE(clSetKernelArg(kernel, 10, sizeof(cl_int), &flip), ret);
       ENSURE(clSetKernelArg(kernel, 11, sizeof(cl_int), &transpose), ret);
 
