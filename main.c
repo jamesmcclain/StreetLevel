@@ -72,7 +72,7 @@ int main(int argc, char ** argv)
               x_resolution(transform), y_resolution(transform));
   /* viewshed_cpu(src, dst, */
   /*              cols, rows, */
-  /*              4608-31, 3072+31, 2000.0, */
+  /*              4608-31, 3072+31, 33000.0, */
   /*              x_resolution(transform), y_resolution(transform)); */
   gettimeofday(&after, NULL);
   fprintf(stdout, "%ld μs\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
