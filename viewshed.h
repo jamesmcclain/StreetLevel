@@ -35,11 +35,11 @@
 
 #include "opencl.h"
 
-extern void viewshed_cl(int devices,
-                        const opencl_struct * info,
-                        const float * src, float * dst,
-                        int cols, int rows,
-                        int x, int y, float z,
-                        double xres, double yres);
+extern void viewshed(int devices,
+                     const opencl_struct * info,
+                     const float * src, float * dst,
+                     int cols, int rows,
+                     int x, int y, float z,
+                     double xres, double yres);
 
 #endif

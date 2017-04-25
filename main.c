@@ -64,11 +64,11 @@ int main(int argc, char ** argv)
 
   // Compute
   gettimeofday(&before, NULL);
-  viewshed_cl(devices, info,
-              src, dst,
-              cols, rows,
-              4608-31, 3072+31, 33000.0,
-              x_resolution(transform), y_resolution(transform));
+  viewshed(devices, info,
+           src, dst,
+           cols, rows,
+           4608-31, 3072+31, 33000.0,
+           x_resolution(transform), y_resolution(transform));
   gettimeofday(&after, NULL);
   fprintf(stdout, "%ld μs\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
 
