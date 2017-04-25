@@ -8,10 +8,10 @@ LDFLAGS += $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -lm
 
 all: streetlevel
 
-streetlevel: main.o rasterio.o opencl.o viewshed.o
+viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(LDFLAGS) -o $@
 
-main.o: main.c *.h
+viewshed_test.o: viewshed_test.c *.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
 %.o: %.c %.h Makefile
@@ -20,9 +20,8 @@ main.o: main.c *.h
 %.o: %.c Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
 
-test: streetlevel
-	rm -f /tmp/viewshed.tif /tmp/viewshed.tif.aux.xml
-	streetlevel /tmp/ned.tif /tmp/viewshed.tif
+test: viewshed_test
+	rm -f /tmp/viewshed.tif /tmp/viewshed.tif.aux.xml ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
 
 valgrind: streetlevel
 	valgrind --leak-check=full streetlevel /tmp/ned.tif /tmp/viewshed.tif
