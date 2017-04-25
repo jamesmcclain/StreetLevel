@@ -60,12 +60,12 @@ char * readfile(const char * filename)
   return str;
 }
 
-void viewshed_cl(int devices,
-                 const opencl_struct * info,
-                 const float * src, float * dst,
-                 int cols, int rows,
-                 int x, int y, float z,
-                 double xres, double yres)
+void viewshed(int devices,
+              const opencl_struct * info,
+              const float * src, float * dst,
+              int cols, int rows,
+              int x, int y, float z,
+              double xres, double yres)
 {
   const char * program_src;
   size_t program_src_length;

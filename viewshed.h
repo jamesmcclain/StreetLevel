@@ -30,12 +30,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VIEWSHED_CPU_H__
-#define __VIEWSHED_CPU_H__
+#ifndef __VIEWSHED_CL_H__
+#define __VIEWSHED_CL_H__
 
-extern void viewshed_cpu(const float * src, float * dst,
-                         int cols, int rows,
-                         int x, int y, float z,
-                         double xres, double yres);
+#include "opencl.h"
+
+extern void viewshed(int devices,
+                     const opencl_struct * info,
+                     const float * src, float * dst,
+                     int cols, int rows,
+                     int x, int y, float z,
+                     double xres, double yres);
 
 #endif
