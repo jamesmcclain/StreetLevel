@@ -53,16 +53,16 @@
 #define REGISTERSIZE (8)
 
 extern void rasterio_init();
-extern void load(const char * filename,
-                 uint32_t * cols, uint32_t * rows,
-                 double * transform,
-                 char ** projection,
-                 float ** image);
-extern void dump(const char * filename,
-                 uint32_t cols, uint32_t rows,
-                 double * transform,
-                 const char * projection,
-                 float * image);
+extern void rasterio_load(const char * filename,
+                          uint32_t * cols, uint32_t * rows,
+                          double * transform,
+                          char ** projection,
+                          float ** image);
+extern void rasterio_dump(const char * filename,
+                          uint32_t cols, uint32_t rows,
+                          double * transform,
+                          const char * projection,
+                          float * image);
 extern double x_resolution(const double * transform);
 extern double y_resolution(const double * transform);
 extern uint32_t xy_to_fancy_index(uint32_t cols, uint32_t x, uint32_t y);

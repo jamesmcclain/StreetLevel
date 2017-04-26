@@ -46,11 +46,11 @@ void rasterio_init()
   GDALAllRegister();
 }
 
-void load(const char * filename,
-          uint32_t * cols, uint32_t * rows,
-          double * transform,
-          char ** projection,
-          float ** image)
+void rasterio_load(const char * filename,
+                   uint32_t * cols, uint32_t * rows,
+                   double * transform,
+                   char ** projection,
+                   float ** image)
 {
   GDALDatasetH dataset;
   GDALRasterBandH band;
@@ -120,11 +120,11 @@ void load(const char * filename,
   GDALClose(dataset);
 }
 
-void dump(const char * filename,
-          uint32_t cols, uint32_t rows,
-          double * transform,
-          const char * projection,
-          float * image)
+void rasterio_dump(const char * filename,
+                   uint32_t cols, uint32_t rows,
+                   double * transform,
+                   const char * projection,
+                   float * image)
 {
   GDALDatasetH dataset;
   GDALDriverH driver;
