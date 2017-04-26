@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, James McClain
+ * Copyright (c) 2010-2014 and 2016-2017, James McClain and Mark Pugner
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,7 +12,8 @@
  *    distribution.
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement: This product
- *    includes software developed by Dr. James W. McClain.
+ *    includes software developed by Dr. James W. McClain and Dr. Mark
+ *    C. Pugner.
  * 4. Neither the names of the authors nor the names of the
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
@@ -29,43 +30,20 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __RASTERIO_H__
-#define __RASTERIO_H__
-
-#include <stdint.h>
-#include "gdal.h"
-#include "cpl_conv.h"
-#include "ogr_api.h"
-#include "ogr_srs_api.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "pdal.h"
 
 
-#define PAGEBITS (12)
-#define PAGESIZE (1<<PAGEBITS)
+int main(int argc, char ** argv)
+{
+  if (argc < 3)
+    {
+      fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
+      exit(-1);
+    }
 
-#define TILEBITS (5)
-#define TILESIZE (1<<TILEBITS)
-#define TILEMASK (0x1f)
+  pdal_load(argv[1]);
 
-#define SUBTILEBITS (2)
-#define SUBTILESIZE (1<<SUBTILEBITS)
-#define SUBTILEMASK (0x03)
-
-#define REGISTERSIZE (8)
-
-extern void rasterio_init();
-extern void rasterio_load(const char * filename,
-                          uint32_t * cols, uint32_t * rows,
-                          double * transform,
-                          char ** projection,
-                          float ** image);
-extern void rasterio_dump(const char * filename,
-                          uint32_t cols, uint32_t rows,
-                          double * transform,
-                          const char * projection,
-                          float * image);
-extern double x_resolution(const double * transform);
-extern double y_resolution(const double * transform);
-extern uint32_t xy_to_fancy_index(uint32_t cols, uint32_t x, uint32_t y);
-extern uint32_t xy_to_vanilla_index(uint32_t cols, uint32_t x, uint32_t y);
-
-#endif
+  return 0;
+}

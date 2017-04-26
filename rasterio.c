@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2014 and 2016-2017, James McClain and Mark Pugner
+ * Copyright (c) 2017, James McClain
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,8 +12,7 @@
  *    distribution.
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement: This product
- *    includes software developed by Dr. James W. McClain and Dr. Mark
- *    C. Pugner.
+ *    includes software developed by Dr. James W. McClain.
  * 4. Neither the names of the authors nor the names of the
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
@@ -47,11 +46,11 @@ void rasterio_init()
   GDALAllRegister();
 }
 
-void load(const char * filename,
-          uint32_t * cols, uint32_t * rows,
-          double * transform,
-          char ** projection,
-          float ** image)
+void rasterio_load(const char * filename,
+                   uint32_t * cols, uint32_t * rows,
+                   double * transform,
+                   char ** projection,
+                   float ** image)
 {
   GDALDatasetH dataset;
   GDALRasterBandH band;
@@ -121,11 +120,11 @@ void load(const char * filename,
   GDALClose(dataset);
 }
 
-void dump(const char * filename,
-          uint32_t cols, uint32_t rows,
-          double * transform,
-          const char * projection,
-          float * image)
+void rasterio_dump(const char * filename,
+                   uint32_t cols, uint32_t rows,
+                   double * transform,
+                   const char * projection,
+                   float * image)
 {
   GDALDatasetH dataset;
   GDALDriverH driver;

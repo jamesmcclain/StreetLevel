@@ -29,43 +29,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __RASTERIO_H__
-#define __RASTERIO_H__
+#ifndef __PDAL_H__
+#define __PDAL_H__
 
-#include <stdint.h>
-#include "gdal.h"
-#include "cpl_conv.h"
-#include "ogr_api.h"
-#include "ogr_srs_api.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+  void pdal_load(const char *);
 
-#define PAGEBITS (12)
-#define PAGESIZE (1<<PAGEBITS)
-
-#define TILEBITS (5)
-#define TILESIZE (1<<TILEBITS)
-#define TILEMASK (0x1f)
-
-#define SUBTILEBITS (2)
-#define SUBTILESIZE (1<<SUBTILEBITS)
-#define SUBTILEMASK (0x03)
-
-#define REGISTERSIZE (8)
-
-extern void rasterio_init();
-extern void rasterio_load(const char * filename,
-                          uint32_t * cols, uint32_t * rows,
-                          double * transform,
-                          char ** projection,
-                          float ** image);
-extern void rasterio_dump(const char * filename,
-                          uint32_t cols, uint32_t rows,
-                          double * transform,
-                          const char * projection,
-                          float * image);
-extern double x_resolution(const double * transform);
-extern double y_resolution(const double * transform);
-extern uint32_t xy_to_fancy_index(uint32_t cols, uint32_t x, uint32_t y);
-extern uint32_t xy_to_vanilla_index(uint32_t cols, uint32_t x, uint32_t y);
+#ifdef __cplusplus
+}
+#endif
 
 #endif

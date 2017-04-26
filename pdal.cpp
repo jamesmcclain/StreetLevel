@@ -29,43 +29,29 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __RASTERIO_H__
-#define __RASTERIO_H__
+#include <cstdio>
+#include <pdal/Filter.hpp>
+#include <pdal/io/LasHeader.hpp>
+#include <pdal/io/LasReader.hpp>
+#include <pdal/PointView.hpp>
+#include <pdal/StageFactory.hpp>
+#include "pdal.h"
 
-#include <stdint.h>
-#include "gdal.h"
-#include "cpl_conv.h"
-#include "ogr_api.h"
-#include "ogr_srs_api.h"
 
+using namespace pdal;
 
-#define PAGEBITS (12)
-#define PAGESIZE (1<<PAGEBITS)
+void pdal_load(const char * filename)
+{
+  LasHeader header;
+  LasReader reader;
+  Options options;
+  PointTable table;
 
-#define TILEBITS (5)
-#define TILESIZE (1<<TILEBITS)
-#define TILEMASK (0x1f)
+  options.add("filename", filename);
+  reader.setOptions(options);
+  reader.prepare(table);
+  header = reader.header();
 
-#define SUBTILEBITS (2)
-#define SUBTILESIZE (1<<SUBTILEBITS)
-#define SUBTILEMASK (0x03)
-
-#define REGISTERSIZE (8)
-
-extern void rasterio_init();
-extern void rasterio_load(const char * filename,
-                          uint32_t * cols, uint32_t * rows,
-                          double * transform,
-                          char ** projection,
-                          float ** image);
-extern void rasterio_dump(const char * filename,
-                          uint32_t cols, uint32_t rows,
-                          double * transform,
-                          const char * projection,
-                          float * image);
-extern double x_resolution(const double * transform);
-extern double y_resolution(const double * transform);
-extern uint32_t xy_to_fancy_index(uint32_t cols, uint32_t x, uint32_t y);
-extern uint32_t xy_to_vanilla_index(uint32_t cols, uint32_t x, uint32_t y);
-
-#endif
+  fprintf(stderr, "point format = %d\n", header.pointFormat());
+  fprintf(stderr, "point count = %d\n", header.pointCount());
+}

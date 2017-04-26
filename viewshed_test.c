@@ -59,7 +59,7 @@ int main(int argc, char ** argv)
   rasterio_init();
 
   // Load
-  load(argv[1], &cols, &rows, transform, &projection, &src);
+  rasterio_load(argv[1], &cols, &rows, transform, &projection, &src);
   dst = calloc(cols * rows, sizeof(float));
 
   // Compute
@@ -74,7 +74,7 @@ int main(int argc, char ** argv)
 
 
   // Output
-  dump(argv[2], cols, rows, transform, projection, dst);
+  rasterio_dump(argv[2], cols, rows, transform, projection, dst);
 
   // Cleanup
   opencl_finit(devices, info);
