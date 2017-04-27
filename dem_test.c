@@ -38,6 +38,7 @@
 int main(int argc, char ** argv)
 {
   char * projection;
+  double transform[6];
 
   if (argc < 3)
     {
@@ -46,8 +47,11 @@ int main(int argc, char ** argv)
     }
 
   // Compute
-  pdal_load(argv[1], &projection);
+  pdal_load(argv[1], 1<<12, 1<<12, transform, &projection);
   fprintf(stderr, "wkt = %s\n", projection);
+  fprintf(stderr, "%lf %lf %lf %lf %lf %lf\n",
+          transform[0], transform[1], transform[2],
+          transform[3], transform[4], transform[5]);
 
   // Cleanup
   free(projection);

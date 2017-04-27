@@ -43,7 +43,9 @@
 using namespace pdal;
 
 void pdal_load(const char * filename,
-	       char ** projection)
+               uint32_t cols, uint32_t rows,
+               double * transform,
+               char ** projection)
 {
   LasHeader header;
   LasReader reader;
@@ -60,6 +62,13 @@ void pdal_load(const char * filename,
   *projection = (char *)calloc(n+1, sizeof(char));
   strncpy(*projection, proj.c_str(), n);
 
-  fprintf(stderr, "point format = %d\n", header.pointFormat());
-  fprintf(stderr, "point count = %d\n", header.pointCount());
+  transform[0] = header.minX(); // top-left x
+  transform[1] = (header.maxX() - header.minX()) / cols; // west-east pixel resolution
+  transform[2] = 0; // zero
+  transform[3] = header.minY(); // top-left y
+  transform[4] = 0; // zero
+  transform[5] = (header.minY() - header.maxY()) / rows; // north-south pixel resolution
+
+  // fprintf(stderr, "point format = %d\n", header.pointFormat());
+  // fprintf(stderr, "point count = %d\n", header.pointCount());
 }
