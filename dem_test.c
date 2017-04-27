@@ -37,13 +37,20 @@
 
 int main(int argc, char ** argv)
 {
+  char * projection;
+
   if (argc < 3)
     {
       fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
       exit(-1);
     }
 
-  pdal_load(argv[1]);
+  // Compute
+  pdal_load(argv[1], &projection);
+  fprintf(stderr, "wkt = %s\n", projection);
+
+  // Cleanup
+  free(projection);
 
   return 0;
 }

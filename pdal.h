@@ -36,7 +36,8 @@
 extern "C" {
 #endif
 
-  void pdal_load(const char *);
+  void pdal_load(const char *,
+                 char ** projection);
 
 #ifdef __cplusplus
 }

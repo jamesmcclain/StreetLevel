@@ -31,8 +31,9 @@ dem_test: dem_test.o pdal.o
 %o: %.cpp Makefile
 	$(CXX) $(CXXFLAGS) $< -c -o $@
 
-test: viewshed_test
-	rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
+test: viewshed_test dem_test
+	# rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
+	dem_test /tmp/interesting.las blah
 
 # valgrind: streetlevel
 # 	valgrind --leak-check=full streetlevel /tmp/ned.tif /tmp/viewshed.tif
