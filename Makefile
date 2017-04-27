@@ -8,16 +8,16 @@ CFLAGS += -std=c11 $(GDAL_CFLAGS)
 CXXFLAGS += -std=c++11 $(PDAL_CXXFLAGS)
 
 
-all: streetlevel
+all: viewshed_test dem_test
 
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -lm -o $@
 
 dem_test: dem_test.o pdal.o
-	$(CXX) $^ $(PDAL_LDFLAGS) -o $@
+	$(CC) $^ $(PDAL_LDFLAGS) -lstdc++ -o $@
 
-viewshed_test.o: viewshed_test.c *.h
-	$(CC) $(CFLAGS) $< -c -o $@
+# viewshed_test.o: viewshed_test.c *.h
+# 	$(CC) $(CFLAGS) $< -c -o $@
 
 %.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
@@ -31,14 +31,15 @@ viewshed_test.o: viewshed_test.c *.h
 %o: %.cpp Makefile
 	$(CXX) $(CXXFLAGS) $< -c -o $@
 
-test: viewshed_test
-	rm -f /tmp/viewshed.tif /tmp/viewshed.tif.aux.xml ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
+test: viewshed_test dem_test
+	# rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
+	dem_test /tmp/interesting.las blah
 
-valgrind: streetlevel
-	valgrind --leak-check=full streetlevel /tmp/ned.tif /tmp/viewshed.tif
+# valgrind: streetlevel
+# 	valgrind --leak-check=full streetlevel /tmp/ned.tif /tmp/viewshed.tif
 
-cachegrind: streetlevel
-	valgrind --tool=cachegrind --branch-sim=yes streetlevel /tmp/ned.tif /tmp/viewshed.tif
+# cachegrind: streetlevel
+# 	valgrind --tool=cachegrind --branch-sim=yes streetlevel /tmp/ned.tif /tmp/viewshed.tif
 
 clean:
 	rm -f *.o

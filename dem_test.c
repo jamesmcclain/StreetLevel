@@ -37,13 +37,24 @@
 
 int main(int argc, char ** argv)
 {
+  char * projection;
+  double transform[6];
+
   if (argc < 3)
     {
       fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
       exit(-1);
     }
 
-  pdal_load(argv[1]);
+  // Compute
+  pdal_load(argv[1], 1<<12, 1<<12, transform, &projection);
+  fprintf(stderr, "wkt = %s\n", projection);
+  fprintf(stderr, "%lf %lf %lf %lf %lf %lf\n",
+          transform[0], transform[1], transform[2],
+          transform[3], transform[4], transform[5]);
+
+  // Cleanup
+  free(projection);
 
   return 0;
 }

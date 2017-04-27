@@ -1,4 +1,5 @@
+cachegrind.out.*
 core
 *.o
-streetlevel
-cachegrind.out.*
+viewshed_test
+dem_test

@@ -30,6 +30,8 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <pdal/Filter.hpp>
 #include <pdal/io/LasHeader.hpp>
 #include <pdal/io/LasReader.hpp>
@@ -40,7 +42,10 @@
 
 using namespace pdal;
 
-void pdal_load(const char * filename)
+void pdal_load(const char * filename,
+               uint32_t cols, uint32_t rows,
+               double * transform,
+               char ** projection)
 {
   LasHeader header;
   LasReader reader;
@@ -52,6 +57,18 @@ void pdal_load(const char * filename)
   reader.prepare(table);
   header = reader.header();
 
-  fprintf(stderr, "point format = %d\n", header.pointFormat());
-  fprintf(stderr, "point count = %d\n", header.pointCount());
+  std::string proj = header.srs().getWKT().c_str();
+  int n = proj.length();
+  *projection = (char *)calloc(n+1, sizeof(char));
+  strncpy(*projection, proj.c_str(), n);
+
+  transform[0] = header.minX(); // top-left x
+  transform[1] = (header.maxX() - header.minX()) / cols; // west-east pixel resolution
+  transform[2] = 0; // zero
+  transform[3] = header.minY(); // top-left y
+  transform[4] = 0; // zero
+  transform[5] = (header.minY() - header.maxY()) / rows; // north-south pixel resolution
+
+  // fprintf(stderr, "point format = %d\n", header.pointFormat());
+  // fprintf(stderr, "point count = %d\n", header.pointCount());
 }

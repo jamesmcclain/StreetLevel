@@ -32,11 +32,16 @@
 #ifndef __PDAL_H__
 #define __PDAL_H__
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-  void pdal_load(const char *);
+  void pdal_load(const char *,
+                 uint32_t cols, uint32_t rows,
+                 double * transform,
+                 char ** projection);
 
 #ifdef __cplusplus
 }
