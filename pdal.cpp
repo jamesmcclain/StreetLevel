@@ -75,16 +75,22 @@ void pdal_load(const char * filename,
 
   set = reader.execute(table);
   view = *(set.begin());
-  dims = view->dimTypes();
-  point_size = view->pointSize();
-  // // fprintf(stderr, "pts = %d dims = %d point_size = %d\n", view->size(), dims, point_size);
-  // PointRef point_ref1 = view->point(0);
-  // PointRef point_ref2 = view->point(1);
   fprintf(stderr, "dims = %d\n", dims.size());
-  for (int i = 0; i < dims.size(); ++i)
+  if (!(view->point(0).hasDim(pdal::Dimension::Id::X) &&
+        view->point(0).hasDim(pdal::Dimension::Id::Y) &&
+        view->point(0).hasDim(pdal::Dimension::Id::Z)))
     {
-      fprintf(stderr, "\t%d = %s %s\n", i,
-              pdal::Dimension::interpretationName(dims.at(i).m_type).c_str(),
-              pdal::Dimension::description(dims.at(i).m_id).c_str());
+      fprintf(stderr, "X, Y, and Z required\n");
+      exit(-1);
+    }
+
+  for (int i = 0; i < header.pointCount(); ++i)
+    {
+      double x, y, z;
+
+      x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
+      y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
+      z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
+      fprintf(stderr, "%lf %lf %lf\n", x, y, z);
     }
 }
