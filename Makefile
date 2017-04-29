@@ -45,7 +45,7 @@ clean:
 	rm -f *.o
 
 cleaner: clean
-	rm -f streetlevel
+	rm -f viewshed_test dem_test
 
 cleanest: cleaner
 	rm -f cachegrind.out.*

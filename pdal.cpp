@@ -65,7 +65,7 @@ void pdal_load(const char * filename,
   transform[0] = header.minX(); // top-left x
   transform[1] = (header.maxX() - header.minX()) / cols; // west-east pixel resolution
   transform[2] = 0; // zero
-  transform[3] = header.minY(); // top-left y
+  transform[3] = header.maxY(); // top-left y
   transform[4] = 0; // zero
   transform[5] = (header.minY() - header.maxY()) / rows; // north-south pixel resolution
 
