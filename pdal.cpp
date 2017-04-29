@@ -47,10 +47,14 @@ void pdal_load(const char * filename,
                double * transform,
                char ** projection)
 {
+  DimTypeList dims;
   LasHeader header;
   LasReader reader;
   Options options;
   PointTable table;
+  PointViewPtr view;
+  PointViewSet set;
+  size_t point_size;
 
   options.add("filename", filename);
   reader.setOptions(options);
@@ -69,6 +73,18 @@ void pdal_load(const char * filename,
   transform[4] = 0; // zero
   transform[5] = (header.minY() - header.maxY()) / rows; // north-south pixel resolution
 
-  // fprintf(stderr, "point format = %d\n", header.pointFormat());
-  // fprintf(stderr, "point count = %d\n", header.pointCount());
+  set = reader.execute(table);
+  view = *(set.begin());
+  dims = view->dimTypes();
+  point_size = view->pointSize();
+  // // fprintf(stderr, "pts = %d dims = %d point_size = %d\n", view->size(), dims, point_size);
+  // PointRef point_ref1 = view->point(0);
+  // PointRef point_ref2 = view->point(1);
+  fprintf(stderr, "dims = %d\n", dims.size());
+  for (int i = 0; i < dims.size(); ++i)
+    {
+      fprintf(stderr, "\t%d = %s %s\n", i,
+              pdal::Dimension::interpretationName(dims.at(i).m_type).c_str(),
+              pdal::Dimension::description(dims.at(i).m_id).c_str());
+    }
 }
