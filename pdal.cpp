@@ -47,10 +47,14 @@ void pdal_load(const char * filename,
                double * transform,
                char ** projection)
 {
+  DimTypeList dims;
   LasHeader header;
   LasReader reader;
   Options options;
   PointTable table;
+  PointViewPtr view;
+  PointViewSet set;
+  size_t point_size;
 
   options.add("filename", filename);
   reader.setOptions(options);
@@ -69,6 +73,24 @@ void pdal_load(const char * filename,
   transform[4] = 0; // zero
   transform[5] = (header.minY() - header.maxY()) / rows; // north-south pixel resolution
 
-  // fprintf(stderr, "point format = %d\n", header.pointFormat());
-  // fprintf(stderr, "point count = %d\n", header.pointCount());
+  set = reader.execute(table);
+  view = *(set.begin());
+  fprintf(stderr, "dims = %d\n", dims.size());
+  if (!(view->point(0).hasDim(pdal::Dimension::Id::X) &&
+        view->point(0).hasDim(pdal::Dimension::Id::Y) &&
+        view->point(0).hasDim(pdal::Dimension::Id::Z)))
+    {
+      fprintf(stderr, "X, Y, and Z required\n");
+      exit(-1);
+    }
+
+  for (int i = 0; i < header.pointCount(); ++i)
+    {
+      double x, y, z;
+
+      x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
+      y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
+      z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
+      fprintf(stderr, "%lf %lf %lf\n", x, y, z);
+    }
 }
