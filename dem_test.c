@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "bitonic.h"
 #include "pdal.h"
 
 
@@ -55,6 +56,18 @@ int main(int argc, char ** argv)
 
   // Cleanup
   free(projection);
+
+  float xs[8] = {144000., 7., 22., 13., 72., 33., 42., 107.};
+
+  for (int i = 0; i < 8; ++i)
+    fprintf(stderr, "%lf ", xs[i]);
+  fprintf(stderr, "\n");
+
+  bitonic(xs, 2);
+
+  for (int i = 0; i < 8; ++i)
+    fprintf(stderr, "%lf ", xs[i]);
+  fprintf(stderr, "\n");
 
   return 0;
 }
