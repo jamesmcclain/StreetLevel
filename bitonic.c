@@ -30,44 +30,62 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "bitonic.h"
-#include "pdal.h"
+// Reference: https://en.wikipedia.org/wiki/Bitonic_sorter
 
-
-int main(int argc, char ** argv)
+void down_arrow(float * xs, int n)
 {
-  char * projection;
-  double transform[6];
+  float a = xs[0], b = xs[1<<n];
+  if (b < a) xs[0] = b, xs[1<<n] = a;
+}
 
-  if (argc < 3)
+void up_arrow(float * xs, int n)
+{
+  float a = xs[0], b = xs[1<<n];
+  if (b > a) xs[0] = b, xs[1<<n] = a;
+}
+
+void dark_red(float * xs, int n)
+{
+  for (int i = 0; i < (1<<n); ++i)
+    down_arrow(xs+i, n);
+}
+
+void light_red(float * xs, int n)
+{
+  for (int i = 0; i < (1<<n); ++i)
+    up_arrow(xs+i, n);
+}
+
+void blue(float * xs, int n)
+{
+  dark_red(xs, n);
+  if (n > 0)
     {
-      fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
+      blue(xs, n-1);
+      blue(xs+(1<<n), n-1);
+    }
+}
+
+void green(float * xs, int n)
+{
+  light_red(xs, n);
+  if (n > 0)
+    {
+      green(xs, n-1);
+      green(xs+(1<<n), n-1);
+    }
+}
+
+void bitonic(float * xs, int n)
+{
+  for (int i = 0; i < n; ++i)
+    {
+      for (int j = 0; j < (1<<(n+1)); j+=(1<<(i+2)))
+        {
+          blue(xs+j, i);
+          green(xs+(1<<(i+1))+j, i);
+        }
     }
 
-  // Compute
-  pdal_load(argv[1], 1<<12, 1<<12, transform, &projection);
-  fprintf(stderr, "wkt = %s\n", projection);
-  fprintf(stderr, "%lf %lf %lf %lf %lf %lf\n",
-          transform[0], transform[1], transform[2],
-          transform[3], transform[4], transform[5]);
-
-  // Cleanup
-  free(projection);
-
-  float xs[8] = {144000., 7., 22., 13., 72., 33., 42., 107.};
-
-  for (int i = 0; i < 8; ++i)
-    fprintf(stderr, "%lf ", xs[i]);
-  fprintf(stderr, "\n");
-
-  bitonic(xs, 2);
-
-  for (int i = 0; i < 8; ++i)
-    fprintf(stderr, "%lf ", xs[i]);
-  fprintf(stderr, "\n");
-
-  return 0;
+  blue(xs, n);
 }

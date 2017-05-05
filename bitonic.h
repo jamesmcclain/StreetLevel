@@ -30,44 +30,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include "bitonic.h"
-#include "pdal.h"
-
-
-int main(int argc, char ** argv)
-{
-  char * projection;
-  double transform[6];
-
-  if (argc < 3)
-    {
-      fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
-
-  // Compute
-  pdal_load(argv[1], 1<<12, 1<<12, transform, &projection);
-  fprintf(stderr, "wkt = %s\n", projection);
-  fprintf(stderr, "%lf %lf %lf %lf %lf %lf\n",
-          transform[0], transform[1], transform[2],
-          transform[3], transform[4], transform[5]);
-
-  // Cleanup
-  free(projection);
-
-  float xs[8] = {144000., 7., 22., 13., 72., 33., 42., 107.};
-
-  for (int i = 0; i < 8; ++i)
-    fprintf(stderr, "%lf ", xs[i]);
-  fprintf(stderr, "\n");
-
-  bitonic(xs, 2);
-
-  for (int i = 0; i < 8; ++i)
-    fprintf(stderr, "%lf ", xs[i]);
-  fprintf(stderr, "\n");
-
-  return 0;
-}
+void down_arrow(float * xs, int n);
+void up_arrow(float * xs, int n);
+void dark_red(float * xs, int n);
+void light_red(float * xs, int n);
+void blue(float * xs, int n);
+void green(float * xs, int n);
+void bitonic(float * xs, int n);

@@ -13,7 +13,7 @@ all: viewshed_test dem_test
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -lm -o $@
 
-dem_test: dem_test.o pdal.o
+dem_test: dem_test.o pdal.o bitonic.o
 	$(CC) $^ $(PDAL_LDFLAGS) -lstdc++ -o $@
 
 # viewshed_test.o: viewshed_test.c *.h

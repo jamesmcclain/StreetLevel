@@ -91,6 +91,6 @@ void pdal_load(const char * filename,
       x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
       y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
       z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
-      fprintf(stderr, "%lf %lf %lf\n", x, y, z);
+      // fprintf(stderr, "%lf %lf %lf\n", x, y, z);
     }
 }
