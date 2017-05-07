@@ -36,4 +36,4 @@ void dark_red(float * xs, int n);
 void light_red(float * xs, int n);
 void blue(float * xs, int n);
 void green(float * xs, int n);
-void bitonic(float * xs, int n);
+void bitonic_cpu(float * xs, int n);

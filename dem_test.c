@@ -32,7 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "bitonic.h"
+#include "bitonic_cpu.h"
 #include "pdal.h"
 
 
@@ -63,7 +63,7 @@ int main(int argc, char ** argv)
     fprintf(stderr, "%lf ", xs[i]);
   fprintf(stderr, "\n");
 
-  bitonic(xs, 2);
+  bitonic_cpu(xs, 2);
 
   for (int i = 0; i < 8; ++i)
     fprintf(stderr, "%lf ", xs[i]);

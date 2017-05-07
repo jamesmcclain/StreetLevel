@@ -76,7 +76,7 @@ void green(float * xs, int n)
     }
 }
 
-void bitonic(float * xs, int n)
+void bitonic_cpu(float * xs, int n)
 {
   for (int i = 0; i < n; ++i)
     {
