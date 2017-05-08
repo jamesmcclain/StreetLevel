@@ -30,62 +30,52 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
+
 // Reference: https://en.wikipedia.org/wiki/Bitonic_sorter
 
-void down_arrow(float * xs, int n)
+void level(float * xs, int n, int l, int k)
 {
-  float a = xs[0], b = xs[1<<n];
-  if (b < a) xs[0] = b, xs[1<<n] = a;
-}
-
-void up_arrow(float * xs, int n)
-{
-  float a = xs[0], b = xs[1<<n];
-  if (b > a) xs[0] = b, xs[1<<n] = a;
-}
-
-void dark_red(float * xs, int n)
-{
-  for (int i = 0; i < (1<<n); ++i)
-    down_arrow(xs+i, n);
-}
-
-void light_red(float * xs, int n)
-{
-  for (int i = 0; i < (1<<n); ++i)
-    up_arrow(xs+i, n);
-}
-
-void blue(float * xs, int n)
-{
-  dark_red(xs, n);
-  if (n > 0)
+  for (int i = 0; (i + (1<<k)) < n; ++i)
     {
-      blue(xs, n-1);
-      blue(xs+(1<<n), n-1);
-    }
-}
+      int a = i;
+      int b = i + (1<<k);
 
-void green(float * xs, int n)
-{
-  light_red(xs, n);
-  if (n > 0)
-    {
-      green(xs, n-1);
-      green(xs+(1<<n), n-1);
+      int a1 = a % (1<<(l+2));
+      int b1 = b % (1<<(l+2));
+      int cut1 = (1<<(l+1));
+
+      int a2 = a % (1<<(k+2));
+      int b2 = b % (1<<(k+2));
+      int cut2 = (1<<(k+1));
+
+      if (a1 < cut1 && b1 < cut1) // down arrows
+        {
+          if ((a2 < cut2 && b2 < cut2) || (a2 >= cut2 && b2 >= cut2))
+            {
+              float _a = xs[a], _b = xs[b];
+              /* fprintf(stdout, "down: %f %f\n", _a, _b); */
+              if (_a > _b) xs[a] = _b, xs[b] = _a;
+            }
+        }
+      else if (a1 >= cut1 && b1 >= cut1) // up arrows
+        {
+          if ((a2 < cut2 && b2 < cut2) || (a2 >= cut2 && b2 >= cut2))
+            {
+              float _a = xs[a], _b = xs[b];
+              /* fprintf(stdout, "  up: %f %f\n", _a, _b); */
+              if (_a < _b) xs[a] = _b, xs[b] = _a;
+            }
+        }
     }
 }
 
 void bitonic_cpu(float * xs, int n)
 {
-  for (int i = 0; i < n; ++i)
-    {
-      for (int j = 0; j < (1<<(n+1)); j+=(1<<(i+2)))
-        {
-          blue(xs+j, i);
-          green(xs+(1<<(i+1))+j, i);
-        }
-    }
+  int l = 0;
+  for (l = 31; (l >= 0) && !(n & (1<<l)); --l) // n assumed to be a power of two
 
-  blue(xs, n);
+  for (int i = 0; i < l; ++i)
+    for (int j = i; j >= 0; --j)
+      level(xs, n, i, j);
 }

@@ -30,10 +30,4 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-void down_arrow(float * xs, int n);
-void up_arrow(float * xs, int n);
-void dark_red(float * xs, int n);
-void light_red(float * xs, int n);
-void blue(float * xs, int n);
-void green(float * xs, int n);
 void bitonic_cpu(float * xs, int n);
