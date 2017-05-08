@@ -32,14 +32,28 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <sys/time.h>
 #include "bitonic_cpu.h"
 #include "pdal.h"
 
 
+int compare(const void * _a, const void * _b)
+{
+  float a = *(float *)_a;
+  float b = *(float *)_b;
+
+  if (a < b) return -1;
+  else if (a > b) return 1;
+  else return 0;
+}
+
 int main(int argc, char ** argv)
 {
-  char * projection;
-  double transform[6];
+  /* char * projection; */
+  /* double transform[6]; */
+  struct timeval t1, t2, t3;
 
   if (argc < 3)
     {
@@ -47,27 +61,37 @@ int main(int argc, char ** argv)
       exit(-1);
     }
 
-  // Compute
-  pdal_load(argv[1], 1<<12, 1<<12, transform, &projection);
-  fprintf(stderr, "wkt = %s\n", projection);
-  fprintf(stderr, "%lf %lf %lf %lf %lf %lf\n",
-          transform[0], transform[1], transform[2],
-          transform[3], transform[4], transform[5]);
+  /* // Compute */
+  /* pdal_load(argv[1], 1<<12, 1<<12, transform, &projection); */
+  /* fprintf(stderr, "wkt = %s\n", projection); */
+  /* fprintf(stderr, "%lf %lf %lf %lf %lf %lf\n", */
+  /*         transform[0], transform[1], transform[2], */
+  /*         transform[3], transform[4], transform[5]); */
 
-  // Cleanup
-  free(projection);
+  /* // Cleanup */
+  /* free(projection); */
 
-  float xs[8] = {144000., 7., 22., 13., 72., 33., 42., 107.};
+  srand((unsigned int)time(NULL));
 
-  for (int i = 0; i < 8; ++i)
-    fprintf(stderr, "%lf ", xs[i]);
-  fprintf(stderr, "\n");
+  int n = 1<<20;
+  float * xs1 = malloc(sizeof(float) * n);
+  float * xs2 = malloc(sizeof(float) * n);
 
-  bitonic_cpu(xs, 2);
+  for (int i = 0; i < n; ++i)
+    xs1[i] = xs2[i] = (float)rand()/(float)(RAND_MAX);
 
-  for (int i = 0; i < 8; ++i)
-    fprintf(stderr, "%lf ", xs[i]);
-  fprintf(stderr, "\n");
+  gettimeofday(&t1, NULL);
+  bitonic_cpu(xs1, n);
+  gettimeofday(&t2, NULL);
+  qsort(xs2, n, sizeof(float), compare);
+  gettimeofday(&t3, NULL);
+
+  fprintf(stdout, "%d\n", memcmp(xs1, xs2, sizeof(float) * n));
+  fprintf(stdout, "bitonic: %ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
+  fprintf(stdout, "  qsort: %ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec));
+
+  free(xs1);
+  free(xs2);
 
   return 0;
 }
