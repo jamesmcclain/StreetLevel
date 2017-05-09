@@ -4,6 +4,7 @@ PDAL_CXXFLAGS ?= -I$(HOME)/local/pdal/include
 PDAL_LDFLAGS ?= -L$(HOME)/local/pdal/lib -lpdalcpp -llaszip
 OPENCL_LDFLAGS ?= -lOpenCL
 CFLAGS ?= -Wall -march=native -mtune=native -Ofast -g
+CXXFLAGS ?= -Wall -march=native -mtune=native -Ofast -g
 CFLAGS += -std=c11 $(GDAL_CFLAGS)
 CXXFLAGS += -std=c++11 $(PDAL_CXXFLAGS)
 
@@ -15,9 +16,6 @@ viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 
 dem_test: dem_test.o pdal.o bitonic_cpu.o
 	$(CC) $^ $(PDAL_LDFLAGS) -lstdc++ -o $@
-
-# viewshed_test.o: viewshed_test.c *.h
-# 	$(CC) $(CFLAGS) $< -c -o $@
 
 %.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
@@ -35,11 +33,13 @@ test: viewshed_test dem_test
 	# rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
 	dem_test /tmp/interesting.las blah
 
-# valgrind: streetlevel
-# 	valgrind --leak-check=full streetlevel /tmp/ned.tif /tmp/viewshed.tif
+valgrind: viewshed_test dem_test
+	# valgrind --leak-check=full viewshed_test /tmp/ned.tif /tmp/viewshed.tif
+	valgrind --leak-check=full dem_test /tmp/interesting.las blah
 
-# cachegrind: streetlevel
-# 	valgrind --tool=cachegrind --branch-sim=yes streetlevel /tmp/ned.tif /tmp/viewshed.tif
+cachegrind: viewshed_test dem_test
+	# valgrind --tool=cachegrind --branch-sim=yes viewshed_test /tmp/ned.tif /tmp/viewshed.tif
+	valgrind --tool=cachegrind --branch-sim=yes dem_test /tmp/interesting.las blah
 
 clean:
 	rm -f *.o
