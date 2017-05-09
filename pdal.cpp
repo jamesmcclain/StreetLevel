@@ -54,7 +54,7 @@ void pdal_load(const char * filename,
   PointTable table;
   PointViewPtr view;
   PointViewSet set;
-  size_t point_size;
+  // size_t point_size;
 
   options.add("filename", filename);
   reader.setOptions(options);
@@ -75,7 +75,7 @@ void pdal_load(const char * filename,
 
   set = reader.execute(table);
   view = *(set.begin());
-  fprintf(stderr, "dims = %d\n", dims.size());
+  fprintf(stderr, "dims = %ld\n", dims.size());
   if (!(view->point(0).hasDim(pdal::Dimension::Id::X) &&
         view->point(0).hasDim(pdal::Dimension::Id::Y) &&
         view->point(0).hasDim(pdal::Dimension::Id::Z)))
@@ -84,13 +84,13 @@ void pdal_load(const char * filename,
       exit(-1);
     }
 
-  for (int i = 0; i < header.pointCount(); ++i)
+  for (unsigned int i = 0; i < header.pointCount(); ++i)
     {
-      double x, y, z;
+      // double x, y, z;
 
-      x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
-      y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
-      z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
+      // x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
+      // y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
+      // z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
       // fprintf(stderr, "%lf %lf %lf\n", x, y, z);
     }
 }

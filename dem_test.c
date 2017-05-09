@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
@@ -73,7 +74,7 @@ int main(int argc, char ** argv)
 
   srand((unsigned int)time(NULL));
 
-  int n = 1<<20;
+  int n = 1<<18;
   float * xs1 = malloc(sizeof(float) * n);
   float * xs2 = malloc(sizeof(float) * n);
 
@@ -86,7 +87,7 @@ int main(int argc, char ** argv)
   qsort(xs2, n, sizeof(float), compare);
   gettimeofday(&t3, NULL);
 
-  fprintf(stdout, "%d\n", memcmp(xs1, xs2, sizeof(float) * n));
+  assert(memcmp(xs1, xs2, sizeof(float) * n) == 0);
   fprintf(stdout, "bitonic: %ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
   fprintf(stdout, "  qsort: %ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec));
 
