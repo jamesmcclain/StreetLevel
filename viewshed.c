@@ -30,35 +30,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <CL/cl.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include "opencl.h"
 #include "rasterio.h"
 
-
-char * readfile(const char * filename)
-{
-  char * str;
-  int fd, ret;
-  struct stat buf;
-
-  fd = open(filename, O_RDONLY);
-  ENSURE(fstat(fd, &buf), ret);
-  str = calloc(buf.st_size + 1, 1);
-  ret = read(fd, str, buf.st_size);
-  ENSURE(close(fd), ret);
-
-  return str;
-}
 
 void viewshed(int devices,
               const opencl_struct * info,
@@ -91,9 +66,9 @@ void viewshed(int devices,
                               &ret);
   ENSURE(ret, ret);
   dst_buffer = clCreateBuffer(info[0].context,
-                              CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
+                              CL_MEM_WRITE_ONLY,
                               sizeof(float) * cols * rows,
-                              (void *)dst,
+                              NULL,
                               &ret);
   ENSURE(ret, ret);
   alphas = clCreateBuffer(info[0].context,

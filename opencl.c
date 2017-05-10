@@ -33,10 +33,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <math.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include <CL/cl.h>
+#include <sys/stat.h>
+
 #include "opencl.h"
 
+
+char * readfile(const char * filename)
+{
+  char * str;
+  int fd, ret;
+  struct stat buf;
+
+  fd = open(filename, O_RDONLY);
+  ENSURE(fstat(fd, &buf), ret);
+  str = calloc(buf.st_size + 1, 1);
+  ret = read(fd, str, buf.st_size);
+  ENSURE(close(fd), ret);
+
+  return str;
+}
 
 void opencl_init(int N, int * n, opencl_struct * info)
 {

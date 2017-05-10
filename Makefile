@@ -12,7 +12,7 @@ CXXFLAGS += -std=c++11 $(PDAL_CXXFLAGS)
 all: viewshed_test dem_test
 
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
-	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -lm -o $@
+	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -o $@
 
 dem_test: dem_test.o pdal.o bitonic_cpu.o
 	$(CC) $^ $(PDAL_LDFLAGS) -lstdc++ -o $@

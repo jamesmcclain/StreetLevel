@@ -30,9 +30,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
 #include <stdio.h>
 #include <inttypes.h>
 #include <sys/time.h>
+
 #include "rasterio.h"
 #include "opencl.h"
 #include "viewshed.h"
