@@ -38,6 +38,8 @@
 #include <time.h>
 
 #include <sys/time.h>
+
+#include "bitonic_cl.h"
 #include "bitonic_cpu.h"
 #include "pdal.h"
 
@@ -60,18 +62,20 @@ int main(int argc, char ** argv)
   opencl_struct info[4];
   struct timeval t1, t2, t3, t4;
 
-  int n = 1<<18;
-  float * xs1 = malloc(sizeof(float) * n);
-  float * xs2 = malloc(sizeof(float) * n);
-  float * xs3 = malloc(sizeof(float) * n);
-
   if (argc < 3)
     {
       fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
       exit(-1);
     }
 
+  int order; sscanf(argv[2], "%d", &order);
+  int n = 1<<(order);
+  float * xs1 = malloc(sizeof(float) * n);
+  float * xs2 = malloc(sizeof(float) * n);
+  float * xs3 = malloc(sizeof(float) * n);
+
   // Initialize
+  opencl_init(4, &devices, info);
   srand((unsigned int)time(NULL));
 
   /* // Compute */
@@ -87,11 +91,13 @@ int main(int argc, char ** argv)
   gettimeofday(&t1, NULL);
   bitonic_cpu(xs1, n);
   gettimeofday(&t2, NULL);
+  bitonic_cl(devices, info, xs2, n);
   gettimeofday(&t3, NULL);
   qsort(xs3, n, sizeof(float), compare);
   gettimeofday(&t4, NULL);
 
   assert(memcmp(xs1, xs3, sizeof(float) * n) == 0);
+  assert(memcmp(xs1, xs2, sizeof(float) * n) == 0);
   fprintf(stdout, "bitonic (cpu): %ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
   fprintf(stdout, " bitonic (cl): %ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec));
   fprintf(stdout, "  qsort (cpu): %ld μs\n", (t4.tv_sec - t3.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));

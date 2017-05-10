@@ -14,8 +14,8 @@ all: viewshed_test dem_test
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -o $@
 
-dem_test: dem_test.o pdal.o bitonic_cpu.o
-	$(CC) $^ $(PDAL_LDFLAGS) -lstdc++ -o $@
+dem_test: dem_test.o pdal.o opencl.o bitonic_cl.o bitonic_cpu.o
+	$(CC) $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) -lstdc++ -o $@
 
 %.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
@@ -31,7 +31,7 @@ dem_test: dem_test.o pdal.o bitonic_cpu.o
 
 test: viewshed_test dem_test
 	# rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
-	dem_test /tmp/interesting.las blah
+	dem_test /tmp/interesting.las 20
 
 valgrind: viewshed_test dem_test
 	# valgrind --leak-check=full viewshed_test /tmp/ned.tif /tmp/viewshed.tif
