@@ -39,8 +39,7 @@
 
 #include <sys/time.h>
 
-#include "bitonic_cl.h"
-#include "bitonic_cpu.h"
+#include "bitonic.h"
 #include "pdal.h"
 
 
@@ -60,7 +59,7 @@ int main(int argc, char ** argv)
   /* double transform[6]; */
   int devices;
   opencl_struct info[4];
-  struct timeval t1, t2, t3, t4;
+  struct timeval t1, t2, t3;
 
   if (argc < 3)
     {
@@ -86,21 +85,17 @@ int main(int argc, char ** argv)
   /*         transform[3], transform[4], transform[5]); */
 
   for (int i = 0; i < n; ++i)
-    xs1[i] = xs2[i] = xs3[i] = (float)rand()/(float)(RAND_MAX);
+    xs1[i] = xs2[i] = (float)rand()/(float)(RAND_MAX);
 
   gettimeofday(&t1, NULL);
-  bitonic_cpu(xs1, n);
+  bitonic_cl(devices, info, xs1, n);
   gettimeofday(&t2, NULL);
-  bitonic_cl(devices, info, xs2, n);
+  qsort(xs2, n, sizeof(float), compare);
   gettimeofday(&t3, NULL);
-  qsort(xs3, n, sizeof(float), compare);
-  gettimeofday(&t4, NULL);
 
-  assert(memcmp(xs1, xs3, sizeof(float) * n) == 0);
   assert(memcmp(xs1, xs2, sizeof(float) * n) == 0);
-  fprintf(stdout, "bitonic (cpu): %ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
-  fprintf(stdout, " bitonic (cl): %ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec));
-  fprintf(stdout, "  qsort (cpu): %ld μs\n", (t4.tv_sec - t3.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));
+  fprintf(stdout, "bitonic: %8ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
+  fprintf(stdout, "  qsort: %8ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec));
 
   // Cleanup
   opencl_finit(devices, info);

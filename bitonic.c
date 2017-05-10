@@ -36,7 +36,7 @@
 
 #include <CL/cl.h>
 
-#include "bitonic_cl.h"
+#include "bitonic.h"
 #include "opencl.h"
 
 
