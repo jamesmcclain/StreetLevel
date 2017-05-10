@@ -32,6 +32,9 @@
 
 #include <stdio.h>
 
+#include "bitonic_cpu.h"
+
+
 // Reference: https://en.wikipedia.org/wiki/Bitonic_sorter
 
 void level(float * xs, int n, int l, int k)
@@ -54,7 +57,6 @@ void level(float * xs, int n, int l, int k)
           if ((a2 < cut2 && b2 < cut2) || (a2 >= cut2 && b2 >= cut2))
             {
               float _a = xs[a], _b = xs[b];
-              /* fprintf(stdout, "down: %f %f\n", _a, _b); */
               if (_a > _b) xs[a] = _b, xs[b] = _a;
             }
         }
@@ -63,7 +65,6 @@ void level(float * xs, int n, int l, int k)
           if ((a2 < cut2 && b2 < cut2) || (a2 >= cut2 && b2 >= cut2))
             {
               float _a = xs[a], _b = xs[b];
-              /* fprintf(stdout, "  up: %f %f\n", _a, _b); */
               if (_a < _b) xs[a] = _b, xs[b] = _a;
             }
         }
@@ -72,10 +73,10 @@ void level(float * xs, int n, int l, int k)
 
 void bitonic_cpu(float * xs, int n)
 {
-  int l = 0;
-  for (l = 31; (l >= 0) && !(n & (1<<l)); --l) // n assumed to be a power of two
+  int max_level = 0;
+  for (max_level = 31; (max_level >= 0) && !(n & (1<<max_level)); --max_level); // n assumed to be a power of two
 
-  for (int i = 0; i < l; ++i)
-    for (int j = i; j >= 0; --j)
-      level(xs, n, i, j);
+  for (int current_level = 0; current_level < max_level; ++current_level)
+    for (int k = current_level; k >= 0; --k)
+      level(xs, n, current_level, k);
 }
