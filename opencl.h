@@ -48,6 +48,7 @@ typedef struct {
 } opencl_struct;
 
 
+extern char * readfile(const char * filename);
 extern void opencl_init(int N, int * n, opencl_struct * info);
 extern void opencl_finit(int n, opencl_struct * info);
 

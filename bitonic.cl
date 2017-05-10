@@ -30,53 +30,38 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-
-#include "bitonic_cpu.h"
-
 
 // Reference: https://en.wikipedia.org/wiki/Bitonic_sorter
 
-void level(float * xs, int n, int l, int k)
+__kernel void bitonic(__global float * xs, int level, int k)
 {
-  for (int i = 0; (i + (1<<k)) < n; ++i)
+  int i = get_global_id(0);
+
+  int a = i;
+  int b = i + (1<<k);
+
+  int a1 = a % (1<<(level+2));
+  int b1 = b % (1<<(level+2));
+  int cut1 = (1<<(level+1));
+
+  int a2 = a % (1<<(k+2));
+  int b2 = b % (1<<(k+2));
+  int cut2 = (1<<(k+1));
+
+  if (a1 < cut1 && b1 < cut1) // down arrows
     {
-      int a = i;
-      int b = i + (1<<k);
-
-      int a1 = a % (1<<(l+2));
-      int b1 = b % (1<<(l+2));
-      int cut1 = (1<<(l+1));
-
-      int a2 = a % (1<<(k+2));
-      int b2 = b % (1<<(k+2));
-      int cut2 = (1<<(k+1));
-
-      if (a1 < cut1 && b1 < cut1) // down arrows
+      if ((a2 < cut2 && b2 < cut2) || (a2 >= cut2 && b2 >= cut2))
         {
-          if ((a2 < cut2 && b2 < cut2) || (a2 >= cut2 && b2 >= cut2))
-            {
-              float _a = xs[a], _b = xs[b];
-              if (_a > _b) xs[a] = _b, xs[b] = _a;
-            }
-        }
-      else if (a1 >= cut1 && b1 >= cut1) // up arrows
-        {
-          if ((a2 < cut2 && b2 < cut2) || (a2 >= cut2 && b2 >= cut2))
-            {
-              float _a = xs[a], _b = xs[b];
-              if (_a < _b) xs[a] = _b, xs[b] = _a;
-            }
+          float _a = xs[a], _b = xs[b];
+          if (_a > _b) xs[a] = _b, xs[b] = _a;
         }
     }
-}
-
-void bitonic_cpu(float * xs, int n)
-{
-  int max_level = 0;
-  for (max_level = 31; (max_level >= 0) && !(n & (1<<max_level)); --max_level); // n assumed to be a power of two
-
-  for (int current_level = 0; current_level < max_level; ++current_level)
-    for (int k = current_level; k >= 0; --k)
-      level(xs, n, current_level, k);
+  else if (a1 >= cut1 && b1 >= cut1) // up arrows
+    {
+      if ((a2 < cut2 && b2 < cut2) || (a2 >= cut2 && b2 >= cut2))
+        {
+          float _a = xs[a], _b = xs[b];
+          if (_a < _b) xs[a] = _b, xs[b] = _a;
+        }
+    }
 }

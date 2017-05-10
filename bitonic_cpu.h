@@ -30,4 +30,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-void bitonic_cpu(float * xs, int n);
+
+#ifndef __BITONIC_CPU_H__
+#define __BITONIC_CPU_H__
+
+extern void bitonic_cpu(float * xs, int n);
+
+#endif

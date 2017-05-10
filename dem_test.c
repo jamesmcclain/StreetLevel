@@ -30,11 +30,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <string.h>
 #include <time.h>
+
 #include <sys/time.h>
+
+#include "bitonic_cl.h"
 #include "bitonic_cpu.h"
 #include "pdal.h"
 
@@ -53,13 +58,25 @@ int main(int argc, char ** argv)
 {
   /* char * projection; */
   /* double transform[6]; */
-  struct timeval t1, t2, t3;
+  int devices;
+  opencl_struct info[4];
+  struct timeval t1, t2, t3, t4;
 
   if (argc < 3)
     {
       fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
       exit(-1);
     }
+
+  int order; sscanf(argv[2], "%d", &order);
+  int n = 1<<(order);
+  float * xs1 = malloc(sizeof(float) * n);
+  float * xs2 = malloc(sizeof(float) * n);
+  float * xs3 = malloc(sizeof(float) * n);
+
+  // Initialize
+  opencl_init(4, &devices, info);
+  srand((unsigned int)time(NULL));
 
   /* // Compute */
   /* pdal_load(argv[1], 1<<12, 1<<12, transform, &projection); */
@@ -68,30 +85,29 @@ int main(int argc, char ** argv)
   /*         transform[0], transform[1], transform[2], */
   /*         transform[3], transform[4], transform[5]); */
 
-  /* // Cleanup */
-  /* free(projection); */
-
-  srand((unsigned int)time(NULL));
-
-  int n = 1<<20;
-  float * xs1 = malloc(sizeof(float) * n);
-  float * xs2 = malloc(sizeof(float) * n);
-
   for (int i = 0; i < n; ++i)
-    xs1[i] = xs2[i] = (float)rand()/(float)(RAND_MAX);
+    xs1[i] = xs2[i] = xs3[i] = (float)rand()/(float)(RAND_MAX);
 
   gettimeofday(&t1, NULL);
   bitonic_cpu(xs1, n);
   gettimeofday(&t2, NULL);
-  qsort(xs2, n, sizeof(float), compare);
+  bitonic_cl(devices, info, xs2, n);
   gettimeofday(&t3, NULL);
+  qsort(xs3, n, sizeof(float), compare);
+  gettimeofday(&t4, NULL);
 
-  fprintf(stdout, "%d\n", memcmp(xs1, xs2, sizeof(float) * n));
-  fprintf(stdout, "bitonic: %ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
-  fprintf(stdout, "  qsort: %ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec));
+  assert(memcmp(xs1, xs3, sizeof(float) * n) == 0);
+  assert(memcmp(xs1, xs2, sizeof(float) * n) == 0);
+  fprintf(stdout, "bitonic (cpu): %ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
+  fprintf(stdout, " bitonic (cl): %ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec));
+  fprintf(stdout, "  qsort (cpu): %ld μs\n", (t4.tv_sec - t3.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));
 
+  // Cleanup
+  opencl_finit(devices, info);
+  /* free(projection); */
   free(xs1);
   free(xs2);
+  free(xs3);
 
   return 0;
 }
