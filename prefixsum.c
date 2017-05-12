@@ -62,7 +62,7 @@ void prefixsum(int device, const opencl_struct * info, int * xs, cl_int n)
   /***********************
    * LOAD, BUILD PROGRAM *
    ***********************/
-  program_src = readfile("./bitonic.cl");
+  program_src = readfile("./sort.cl");
   program_src_length = strlen(program_src);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateProgramWithSource.html
   program = clCreateProgramWithSource(info[device].context, 1, &program_src, &program_src_length, &ret);

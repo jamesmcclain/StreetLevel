@@ -60,7 +60,7 @@ int main(int argc, char ** argv)
   /* double transform[6]; */
   int devices;
   opencl_struct info[4];
-  struct timeval t1, t2, t3;
+  struct timeval t1, t2, t3, t4, t5;
 
   if (argc < 3)
     {
@@ -70,8 +70,8 @@ int main(int argc, char ** argv)
 
   int order; sscanf(argv[2], "%d", &order);
   int n = 1<<(order);
-  /* float * xs1 = malloc(sizeof(float) * n); */
-  /* float * xs2 = malloc(sizeof(float) * n); */
+  float * xs1 = malloc(sizeof(float) * n);
+  float * xs2 = malloc(sizeof(float) * n);
   int * ys1 = malloc(sizeof(int) * n);
   int * ys2 = malloc(sizeof(int) * n);
 
@@ -90,33 +90,39 @@ int main(int argc, char ** argv)
   /*         transform[0], transform[1], transform[2], */
   /*         transform[3], transform[4], transform[5]); */
 
-  /* for (int i = 0; i < n; ++i) */
-  /*   xs1[i] = xs2[i] = (float)rand()/(float)(RAND_MAX); */
+  for (int i = 0; i < n; ++i)
+    xs1[i] = xs2[i] = (float)rand()/(float)(RAND_MAX);
 
   for (int i = 0; i < n; ++i)
     ys1[i] = ys2[i] = rand() % 17;
 
-  /* gettimeofday(&t1, NULL); */
-  /* bitonic(devices, info, xs1, n); */
-  /* gettimeofday(&t2, NULL); */
-  /* qsort(xs2, n, sizeof(float), compare); */
-  /* gettimeofday(&t3, NULL); */
-
+  gettimeofday(&t1, NULL);
+  bitonic(0, info, xs1, n);
+  gettimeofday(&t2, NULL);
+  qsort(xs2, n, sizeof(float), compare);
+  gettimeofday(&t3, NULL);
   prefixsum(0, info, ys1, n);
+  gettimeofday(&t4, NULL);
   for (int i = 1; i < n; ++i) ys2[i] += ys2[i-1];
-  assert(memcmp(ys1, ys2, sizeof(float) * n) == 0);
+  gettimeofday(&t5, NULL);
 
-  /* assert(memcmp(xs1, xs2, sizeof(float) * n) == 0); */
-  /* fprintf(stdout, "bitonic: %8ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec)); */
-  /* fprintf(stdout, "  qsort: %8ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec)); */
+  /**********
+   * OUTPUT *
+   **********/
+  assert(memcmp(ys1, ys2, sizeof(float) * n) == 0);
+  assert(memcmp(xs1, xs2, sizeof(float) * n) == 0);
+  fprintf(stdout, "           bitonic: %8ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
+  fprintf(stdout, "             qsort: %8ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec));
+  fprintf(stdout, "   prefix sum (cl): %8ld μs\n", (t4.tv_sec - t3.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));
+  fprintf(stdout, "prefix sum (naive): %8ld μs\n", (t5.tv_sec - t4.tv_sec) * 1000000 + (t5.tv_usec - t4.tv_usec));
 
   /***********
    * CLEANUP *
    ***********/
   opencl_finit(devices, info);
   /* free(projection); */
-  /* free(xs1); */
-  /* free(xs2); */
+  free(xs1);
+  free(xs2);
   free(ys1);
   free(ys2);
 
