@@ -93,7 +93,7 @@ int main(int argc, char ** argv)
     ys1[i] = ys2[i] = rand() % 17;
 
   /* gettimeofday(&t1, NULL); */
-  /* bitonic_cl(devices, info, xs1, n); */
+  /* bitonic(devices, info, xs1, n); */
   /* gettimeofday(&t2, NULL); */
   /* qsort(xs2, n, sizeof(float), compare); */
   /* gettimeofday(&t3, NULL); */

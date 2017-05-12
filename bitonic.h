@@ -36,9 +36,9 @@
 
 #include "opencl.h"
 
-extern void bitonic_cl(int devices,
-                       const opencl_struct * info,
-                       float * xs,
-                       size_t n);
+extern void bitonic(int devices,
+                    const opencl_struct * info,
+                    float * xs,
+                    size_t n);
 
 #endif

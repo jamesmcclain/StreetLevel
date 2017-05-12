@@ -40,10 +40,10 @@
 #include "opencl.h"
 
 
-void bitonic_cl(int devices,
-                const opencl_struct * info,
-                float * xs,
-                size_t n)
+void bitonic(int devices,
+             const opencl_struct * info,
+             float * xs,
+             size_t n)
 {
   const char * program_src;
   size_t program_src_length;
