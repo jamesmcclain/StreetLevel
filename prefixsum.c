@@ -30,43 +30,107 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include <stdio.h>
+#include <string.h>
+#include "opencl.h"
+#include "prefixsum.h"
 
-
-// Reference: https://en.wikipedia.org/wiki/Prefix_sum#Parallel_algorithm
-
-void sum(int * xs, int n, int start, int log_stride, int length, int i)
+void prefixsum(int device, const opencl_struct * info, int * xs, cl_int n)
 {
-  i = (i<<log_stride) + start;
-  if (i + length < n)
-    xs[i + length] += xs[i];
-}
+  const char * program_src;
+  size_t program_src_length;
 
-void prefixsum(int * xs, int n)
-{
+  cl_int ret;
+  cl_mem buffer;
+  cl_program program;
+  cl_kernel kernel;
+
   int max_k = 0;
   for (max_k = 31; (max_k >= 0) && !(n & (1<<max_k)); --max_k); // n assumed to be a power of two
 
+  /*****************
+   * CREATE BUFFER *
+   *****************/
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateBuffer.html
+  buffer = clCreateBuffer(info[device].context,
+                          CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                          sizeof(cl_int) * n,
+                          (void *)xs,
+                          &ret);
+  ENSURE(ret, ret);
+
+  /***********************
+   * LOAD, BUILD PROGRAM *
+   ***********************/
+  program_src = readfile("./bitonic.cl");
+  program_src_length = strlen(program_src);
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateProgramWithSource.html
+  program = clCreateProgramWithSource(info[device].context, 1, &program_src, &program_src_length, &ret);
+  ENSURE(ret, ret);
+  free((void *)program_src);
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clBuildProgram.html
+  ENSURE(clBuildProgram(program, 1, &(info[device].device), NULL, NULL, NULL), ret);
+
+  /****************
+   * SETUP KERNEL *
+   ****************/
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateKernel.html
+  kernel = clCreateKernel(program, "sum", &ret);
+  ENSURE(ret, ret);
+
+  /******************
+   * EXECUTE KERNEL *
+   ******************/
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetKernelArg.html
+  ENSURE(clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffer), ret);
+  ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_int), &n), ret);
   for (int k = 0; k < max_k; ++k)
     {
-      int start = ((1<<k)-1);
-      int log_stride = k+1;
-      int last = (n - start)>>log_stride;
-      int length = 1<<k;
+      cl_int start = ((1<<k)-1);
+      cl_int log_stride = k+1;
+      size_t last = ((n - start)>>log_stride) + 1; // Want ids from 0 to ((n - start)>>log_stride) inclusive
+      cl_int length = 1<<k;
 
-      for (int i = 0; i <= last; ++i)
-        sum(xs, n, start, log_stride, length, i);
+      ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_int), &start), ret);
+      ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &log_stride), ret);
+      ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &length), ret);
+      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
+      ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
+                                    NULL, &last, NULL,
+                                    0, NULL, NULL), ret);
     }
-
   for (int k = max_k-1; k >= 0; --k)
     {
-      int start = ((1<<(k+1))-1);
-      int log_stride = k+1;
-      int last = (n - start)>>log_stride;
-      int length = 1<<k;
+      cl_int start = ((1<<(k+1))-1);
+      cl_int log_stride = k+1;
+      size_t last = ((n - start)>>log_stride) + 1;
+      cl_int length = 1<<k;
 
-      for (int i = 0; i <= last; ++i)
-        sum(xs, n, start, log_stride, length, i);
+      ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_int), &start), ret);
+      ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &log_stride), ret);
+      ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &length), ret);
+      ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
+                                    NULL, &last, NULL,
+                                    0, NULL, NULL), ret);
     }
+
+  /***************************
+   * READ RESULT FROM DEVICE *
+   ***************************/
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueReadBuffer.html
+  ENSURE(clEnqueueReadBuffer(info[device].queue,
+                             buffer,
+                             CL_TRUE,
+                             0, sizeof(cl_int) * n, xs,
+                             0, NULL, NULL), ret);
+
+  /*********************
+   * RELEASE RESOURCES *
+   *********************/
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseKernel.html
+  ENSURE(clReleaseKernel(kernel), ret);
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseProgram.html
+  ENSURE(clReleaseProgram(program), ret);
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseMemObject.html
+  ENSURE(clReleaseMemObject(buffer), ret);
 }

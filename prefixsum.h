@@ -34,7 +34,12 @@
 #ifndef __PREFIXSUM_CPU_H__
 #define __PREFIXSUM_CPU_H__
 
-extern void prefixsum(int * xs,
-                      size_t n);
+#include <CL/cl.h>
+#include "opencl.h"
+
+extern void prefixsum(int device,
+                      const opencl_struct * info,
+                      int * xs,
+                      cl_int n);
 
 #endif

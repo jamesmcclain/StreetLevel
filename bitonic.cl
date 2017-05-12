@@ -31,8 +31,17 @@
  */
 
 
-// Reference: https://en.wikipedia.org/wiki/Bitonic_sorter
+// Reference: https://en.wikipedia.org/wiki/Prefix_sum#Parallel_algorithm
+__kernel void sum(__global int * xs, int n, int start, int log_stride, int length)
+{
+  int i = get_global_id(0);
 
+  i = (i<<log_stride) + start;
+  if (i + length < n)
+    xs[i + length] += xs[i];
+}
+
+// Reference: https://en.wikipedia.org/wiki/Bitonic_sorter
 __kernel void bitonic(__global float * xs, int level, int k)
 {
   int i = get_global_id(0);

@@ -75,11 +75,15 @@ int main(int argc, char ** argv)
   int * ys1 = malloc(sizeof(int) * n);
   int * ys2 = malloc(sizeof(int) * n);
 
-  // Initialize
+  /**************
+   * INITIALIZE *
+   **************/
   opencl_init(4, &devices, info);
   srand((unsigned int)time(NULL));
 
-  // Compute
+  /***********
+   * COMPUTE *
+   ***********/
   /* pdal_load(argv[1], 1<<12, 1<<12, transform, &projection); */
   /* fprintf(stderr, "wkt = %s\n", projection); */
   /* fprintf(stderr, "%lf %lf %lf %lf %lf %lf\n", */
@@ -98,7 +102,7 @@ int main(int argc, char ** argv)
   /* qsort(xs2, n, sizeof(float), compare); */
   /* gettimeofday(&t3, NULL); */
 
-  prefixsum(ys1, n);
+  prefixsum(0, info, ys1, n);
   for (int i = 1; i < n; ++i) ys2[i] += ys2[i-1];
   assert(memcmp(ys1, ys2, sizeof(float) * n) == 0);
 
@@ -106,7 +110,9 @@ int main(int argc, char ** argv)
   /* fprintf(stdout, "bitonic: %8ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec)); */
   /* fprintf(stdout, "  qsort: %8ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec)); */
 
-  // Cleanup
+  /***********
+   * CLEANUP *
+   ***********/
   opencl_finit(devices, info);
   /* free(projection); */
   /* free(xs1); */
