@@ -31,40 +31,46 @@
  */
 
 
-#include <stdio.h>
-
-
 // Reference: https://en.wikipedia.org/wiki/Prefix_sum#Parallel_algorithm
-
-
-void sweep(float * xs, int n, int k, int i)
+__kernel void sum(__global int * xs, int n, int start, int log_stride, int length)
 {
-  int i_prime = i - ((1<<(k+1)) - 1);
-  int length = (1<<k);
+  int i = get_global_id(0);
 
-  if (((i_prime % (1<<(k+1))) == 0) && (i + length < n))
+  i = (i<<log_stride) + start;
+  if (i + length < n)
     xs[i + length] += xs[i];
 }
 
-void reduce(float * xs, int n, int k, int i)
+// Reference: https://en.wikipedia.org/wiki/Bitonic_sorter
+__kernel void bitonic(__global float * xs, int level, int k)
 {
-  int i_prime = i - ((1<<k) - 1);
-  int length = (1<<k);
+  int i = get_global_id(0);
 
-  if (((i_prime % (1<<(k+1))) == 0) && (i + length < n))
-    xs[i + length] += xs[i];
-}
+  int a = i;
+  int b = i + (1<<k);
 
-void prefixsum(float * xs, int n)
-{
-  int max_k = 0;
-  for (max_k = 31; (max_k >= 0) && !(n & (1<<max_k)); --max_k); // n assumed to be a power of two
+  int a1 = a % (1<<(level+2));
+  int b1 = b % (1<<(level+2));
+  int cut1 = (1<<(level+1));
 
-  for (int k = 0; k < max_k; ++k)
-    for (int i = 0; i < n; ++i)
-      reduce(xs, n, k, i);
+  int a2 = a % (1<<(k+2));
+  int b2 = b % (1<<(k+2));
+  int cut2 = (1<<(k+1));
 
-  for (int k = max_k-1; k >= 0; --k)
-    for (int i = 0; i < n; ++i)
-      sweep(xs, n, k, i);
+  if (a1 < cut1 && b1 < cut1) // down arrows
+    {
+      if ((a2 < cut2 && b2 < cut2) || (a2 >= cut2 && b2 >= cut2))
+        {
+          float _a = xs[a], _b = xs[b];
+          if (_a > _b) xs[a] = _b, xs[b] = _a;
+        }
+    }
+  else if (a1 >= cut1 && b1 >= cut1) // up arrows
+    {
+      if ((a2 < cut2 && b2 < cut2) || (a2 >= cut2 && b2 >= cut2))
+        {
+          float _a = xs[a], _b = xs[b];
+          if (_a < _b) xs[a] = _b, xs[b] = _a;
+        }
+    }
 }

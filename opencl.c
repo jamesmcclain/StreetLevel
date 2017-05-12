@@ -35,12 +35,9 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
-
 #include <CL/cl.h>
 #include <sys/stat.h>
-
 #include "opencl.h"
-
 
 char * readfile(const char * filename)
 {

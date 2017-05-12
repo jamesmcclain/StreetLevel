@@ -32,14 +32,10 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <CL/cl.h>
-#include "bitonic.h"
 #include "opencl.h"
+#include "prefixsum.h"
 
-void bitonic(int device,
-             const opencl_struct * info,
-             float * xs,
-             size_t n)
+void prefixsum(int device, const opencl_struct * info, int * xs, cl_int n)
 {
   const char * program_src;
   size_t program_src_length;
@@ -49,8 +45,8 @@ void bitonic(int device,
   cl_program program;
   cl_kernel kernel;
 
-  int max_level = 0;
-  for (max_level = 31; (max_level >= 0) && !(n & (1<<max_level)); --max_level); // n assumed to be a power of two
+  int max_k = 0;
+  for (max_k = 31; (max_k >= 0) && !(n & (1<<max_k)); --max_k); // n assumed to be a power of two
 
   /*****************
    * CREATE BUFFER *
@@ -58,7 +54,7 @@ void bitonic(int device,
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateBuffer.html
   buffer = clCreateBuffer(info[device].context,
                           CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                          sizeof(float) * n,
+                          sizeof(cl_int) * n,
                           (void *)xs,
                           &ret);
   ENSURE(ret, ret);
@@ -79,7 +75,7 @@ void bitonic(int device,
    * SETUP KERNEL *
    ****************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateKernel.html
-  kernel = clCreateKernel(program, "bitonic", &ret);
+  kernel = clCreateKernel(program, "sum", &ret);
   ENSURE(ret, ret);
 
   /******************
@@ -87,17 +83,35 @@ void bitonic(int device,
    ******************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetKernelArg.html
   ENSURE(clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffer), ret);
-  for (cl_int current_level = 0; current_level < max_level; ++current_level)
+  ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_int), &n), ret);
+  for (int k = 0; k < max_k; ++k)
     {
-      ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_int), &current_level), ret);
-      for (cl_int k = current_level; k >= 0; --k)
-        {
-          ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_int), &k), ret);
-          // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
-          ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
-                                        NULL, &n, NULL,
-                                        0, NULL, NULL), ret);
-        }
+      cl_int start = ((1<<k)-1);
+      cl_int log_stride = k+1;
+      size_t last = ((n - start)>>log_stride) + 1; // Want ids from 0 to ((n - start)>>log_stride) inclusive
+      cl_int length = 1<<k;
+
+      ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_int), &start), ret);
+      ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &log_stride), ret);
+      ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &length), ret);
+      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
+      ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
+                                    NULL, &last, NULL,
+                                    0, NULL, NULL), ret);
+    }
+  for (int k = max_k-1; k >= 0; --k)
+    {
+      cl_int start = ((1<<(k+1))-1);
+      cl_int log_stride = k+1;
+      size_t last = ((n - start)>>log_stride) + 1;
+      cl_int length = 1<<k;
+
+      ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_int), &start), ret);
+      ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &log_stride), ret);
+      ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &length), ret);
+      ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
+                                    NULL, &last, NULL,
+                                    0, NULL, NULL), ret);
     }
 
   /***************************
@@ -107,7 +121,7 @@ void bitonic(int device,
   ENSURE(clEnqueueReadBuffer(info[device].queue,
                              buffer,
                              CL_TRUE,
-                             0, sizeof(float) * n, xs,
+                             0, sizeof(cl_int) * n, xs,
                              0, NULL, NULL), ret);
 
   /*********************

@@ -35,7 +35,7 @@
 
 #include "opencl.h"
 
-extern void viewshed(int devices,
+extern void viewshed(int device,
                      const opencl_struct * info,
                      const float * src, float * dst,
                      int cols, int rows,

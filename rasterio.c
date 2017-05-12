@@ -35,17 +35,13 @@
 #include <string.h>
 #include "rasterio.h"
 
-
-/*
- * Reference: http://www.gdal.org/gdal_tutorial.html
- */
-
-
+// Reference: http://www.gdal.org/gdal_tutorial.html
 void rasterio_init()
 {
   GDALAllRegister();
 }
 
+// Reference: http://www.gdal.org/gdal_tutorial.html
 void rasterio_load(const char * filename,
                    uint32_t * cols, uint32_t * rows,
                    double * transform,
@@ -120,6 +116,7 @@ void rasterio_load(const char * filename,
   GDALClose(dataset);
 }
 
+// Reference: http://www.gdal.org/gdal_tutorial.html
 void rasterio_dump(const char * filename,
                    uint32_t cols, uint32_t rows,
                    double * transform,
