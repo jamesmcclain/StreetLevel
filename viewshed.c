@@ -33,7 +33,7 @@
 #include "opencl.h"
 #include "rasterio.h"
 
-void viewshed(int devices,
+void viewshed(int device,
               const opencl_struct * info,
               const float * src, float * dst,
               int cols, int rows,
@@ -59,19 +59,19 @@ void viewshed(int devices,
    * CREATE BUFFERS *
    ******************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateBuffer.html
-  src_buffer = clCreateBuffer(info[0].context,
+  src_buffer = clCreateBuffer(info[device].context,
                               CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
                               sizeof(float) * cols * rows,
                               (void *)src,
                               &ret);
   ENSURE(ret, ret);
-  dst_buffer = clCreateBuffer(info[0].context,
-                              CL_MEM_WRITE_ONLY,
+  dst_buffer = clCreateBuffer(info[device].context,
+                              CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
                               sizeof(float) * cols * rows,
-                              NULL,
+                              (void *)dst,
                               &ret);
   ENSURE(ret, ret);
-  alphas = clCreateBuffer(info[0].context,
+  alphas = clCreateBuffer(info[device].context,
                           CL_MEM_READ_WRITE,
                           sizeof(float) * LARGER(cols, rows),
                           NULL,
@@ -84,11 +84,11 @@ void viewshed(int devices,
   program_src = readfile("./viewshed.cl");
   program_src_length = strlen(program_src);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateProgramWithSource.html
-  program = clCreateProgramWithSource(info[0].context, 1, &program_src, &program_src_length, &ret);
+  program = clCreateProgramWithSource(info[device].context, 1, &program_src, &program_src_length, &ret);
   ENSURE(ret, ret);
   free((void *)program_src);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clBuildProgram.html
-  ENSURE(clBuildProgram(program, 1, &(info[0].device), NULL, NULL, NULL), ret);
+  ENSURE(clBuildProgram(program, 1, &(info[device].device), NULL, NULL, NULL), ret);
 
   /****************
    * SETUP KERNEL *
@@ -161,7 +161,7 @@ void viewshed(int devices,
           ENSURE(clSetKernelArg(kernel, 15, sizeof(cl_int), &that_steps), ret);
 
           // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
-          ENSURE(clEnqueueNDRangeKernel(info[0].queue, kernel, 1,
+          ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
                                         NULL, &global_work_size, NULL,
                                         0, NULL, NULL), ret);
         }
@@ -171,7 +171,7 @@ void viewshed(int devices,
    * READ RESULT FROM DEVICE *
    ***************************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueReadBuffer.html
-  ENSURE(clEnqueueReadBuffer(info[0].queue,
+  ENSURE(clEnqueueReadBuffer(info[device].queue,
                              dst_buffer,
                              CL_TRUE,
                              0, sizeof(float) * cols * rows, dst,

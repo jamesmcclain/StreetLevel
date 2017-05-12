@@ -69,7 +69,7 @@ int main(int argc, char ** argv)
    * COMPUTE *
    ***********/
   gettimeofday(&before, NULL);
-  viewshed(devices, info,
+  viewshed(0, info,
            src, dst,
            cols, rows,
            4608-31, 3072+31, 33000.0,
