@@ -30,15 +30,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include <stdio.h>
 #include <string.h>
-
 #include <CL/cl.h>
-
 #include "bitonic.h"
 #include "opencl.h"
-
 
 void bitonic(int devices,
              const opencl_struct * info,
@@ -56,7 +52,9 @@ void bitonic(int devices,
   int max_level = 0;
   for (max_level = 31; (max_level >= 0) && !(n & (1<<max_level)); --max_level); // n assumed to be a power of two
 
-  // Create buffer
+  /*****************
+   * CREATE BUFFER *
+   *****************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateBuffer.html
   buffer = clCreateBuffer(info[0].context,
                           CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
@@ -65,7 +63,9 @@ void bitonic(int devices,
                           &ret);
   ENSURE(ret, ret);
 
-  // Load, build program
+  /***********************
+   * LOAD, BUILD PROGRAM *
+   ***********************/
   program_src = readfile("./bitonic.cl");
   program_src_length = strlen(program_src);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateProgramWithSource.html
@@ -75,11 +75,16 @@ void bitonic(int devices,
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clBuildProgram.html
   ENSURE(clBuildProgram(program, 1, &(info[0].device), NULL, NULL, NULL), ret);
 
-  // Setup kernel
+  /****************
+   * SETUP KERNEL *
+   ****************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateKernel.html
   kernel = clCreateKernel(program, "bitonic", &ret);
   ENSURE(ret, ret);
 
+  /******************
+   * EXECUTE KERNEL *
+   ******************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetKernelArg.html
   ENSURE(clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffer), ret);
   for (cl_int current_level = 0; current_level < max_level; ++current_level)
@@ -95,7 +100,9 @@ void bitonic(int devices,
         }
     }
 
-  // Read result from device
+  /***************************
+   * READ RESULT FROM DEVICE *
+   ***************************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueReadBuffer.html
   ENSURE(clEnqueueReadBuffer(info[0].queue,
                              buffer,
@@ -103,6 +110,9 @@ void bitonic(int devices,
                              0, sizeof(float) * n, xs,
                              0, NULL, NULL), ret);
 
+  /*********************
+   * RELEASE RESOURCES *
+   *********************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseKernel.html
   ENSURE(clReleaseKernel(kernel), ret);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseProgram.html

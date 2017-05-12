@@ -30,10 +30,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include "opencl.h"
 #include "rasterio.h"
-
 
 void viewshed(int devices,
               const opencl_struct * info,
@@ -57,7 +55,9 @@ void viewshed(int devices,
   cl_int this_steps, that_steps;
   size_t global_work_size = 0;
 
-  // Create source, destination, work buffers
+  /******************
+   * CREATE BUFFERS *
+   ******************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateBuffer.html
   src_buffer = clCreateBuffer(info[0].context,
                               CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,
@@ -78,7 +78,9 @@ void viewshed(int devices,
                           &ret);
   ENSURE(ret, ret);
 
-  // Load, build program
+  /***********************
+   * LOAD, BUILD PROGRAM *
+   ***********************/
   program_src = readfile("./viewshed.cl");
   program_src_length = strlen(program_src);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateProgramWithSource.html
@@ -88,17 +90,21 @@ void viewshed(int devices,
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clBuildProgram.html
   ENSURE(clBuildProgram(program, 1, &(info[0].device), NULL, NULL, NULL), ret);
 
-  // Setup kernel
+  /****************
+   * SETUP KERNEL *
+   ****************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateKernel.html
   kernel = clCreateKernel(program, "viewshed", &ret);
   ENSURE(ret, ret);
 
+  /******************
+   * EXECUTE KERNEL *
+   ******************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetKernelArg.html
   ENSURE(clSetKernelArg(kernel, 0, sizeof(cl_mem), &src_buffer), ret);
   ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_mem), &dst_buffer), ret);
   ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_mem), &alphas), ret);
   ENSURE(clSetKernelArg(kernel, 7, sizeof(cl_float), &_z), ret);
-
   for (int cardinal = 0; cardinal < 4; ++cardinal)
     {
       global_work_size = 0;
@@ -161,7 +167,9 @@ void viewshed(int devices,
         }
     }
 
-  // Read result from device
+  /***************************
+   * READ RESULT FROM DEVICE *
+   ***************************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueReadBuffer.html
   ENSURE(clEnqueueReadBuffer(info[0].queue,
                              dst_buffer,
@@ -169,6 +177,9 @@ void viewshed(int devices,
                              0, sizeof(float) * cols * rows, dst,
                              0, NULL, NULL), ret);
 
+  /*********************
+   * RELEASE RESOURCES *
+   *********************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseKernel.html
   ENSURE(clReleaseKernel(kernel), ret);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseProgram.html

@@ -30,15 +30,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include <stdio.h>
 #include <inttypes.h>
 #include <sys/time.h>
-
 #include "rasterio.h"
 #include "opencl.h"
 #include "viewshed.h"
-
 
 int main(int argc, char ** argv)
 {
@@ -56,15 +53,21 @@ int main(int argc, char ** argv)
       exit(-1);
     }
 
-  // Initialize
+  /**************
+   * INITIALIZE *
+   **************/
   opencl_init(4, &devices, info);
   rasterio_init();
 
-  // Load
+  /********
+   * LOAD *
+   ********/
   rasterio_load(argv[1], &cols, &rows, transform, &projection, &src);
   dst = calloc(cols * rows, sizeof(float));
 
-  // Compute
+  /***********
+   * COMPUTE *
+   ***********/
   gettimeofday(&before, NULL);
   viewshed(devices, info,
            src, dst,
@@ -75,10 +78,14 @@ int main(int argc, char ** argv)
   fprintf(stdout, "%ld μs\n", (after.tv_sec - before.tv_sec) * 1000000 + (after.tv_usec - before.tv_usec));
 
 
-  // Output
+  /**********
+   * OUTPUT *
+   **********/
   rasterio_dump(argv[2], cols, rows, transform, projection, dst);
 
-  // Cleanup
+  /***********
+   * CLEANUP *
+   ***********/
   opencl_finit(devices, info);
   free(projection);
   free(src);
