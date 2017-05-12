@@ -30,8 +30,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VIEWSHED_CL_H__
-#define __VIEWSHED_CL_H__
+#ifndef __VIEWSHED_H__
+#define __VIEWSHED_H__
 
 #include "opencl.h"
 

@@ -31,8 +31,8 @@
  */
 
 
-#ifndef __BITONIC_CL_H__
-#define __BITONIC_CL_H__
+#ifndef __BITONIC_H__
+#define __BITONIC_H__
 
 #include "opencl.h"
 
