@@ -36,35 +36,37 @@
 
 // Reference: https://en.wikipedia.org/wiki/Prefix_sum#Parallel_algorithm
 
-
-void sweep(float * xs, int n, int k, int i)
+void sum(int * xs, int n, int start, int log_stride, int length, int i)
 {
-  int i_prime = i - ((1<<(k+1)) - 1);
-  int length = (1<<k);
-
-  if (((i_prime % (1<<(k+1))) == 0) && (i + length < n))
+  i = (i<<log_stride) + start;
+  if (i + length < n)
     xs[i + length] += xs[i];
 }
 
-void reduce(float * xs, int n, int k, int i)
-{
-  int i_prime = i - ((1<<k) - 1);
-  int length = (1<<k);
-
-  if (((i_prime % (1<<(k+1))) == 0) && (i + length < n))
-    xs[i + length] += xs[i];
-}
-
-void prefixsum(float * xs, int n)
+void prefixsum(int * xs, int n)
 {
   int max_k = 0;
   for (max_k = 31; (max_k >= 0) && !(n & (1<<max_k)); --max_k); // n assumed to be a power of two
 
   for (int k = 0; k < max_k; ++k)
-    for (int i = 0; i < n; ++i)
-      reduce(xs, n, k, i);
+    {
+      int start = ((1<<k)-1);
+      int log_stride = k+1;
+      int last = (n - start)>>log_stride;
+      int length = 1<<k;
+
+      for (int i = 0; i <= last; ++i)
+        sum(xs, n, start, log_stride, length, i);
+    }
 
   for (int k = max_k-1; k >= 0; --k)
-    for (int i = 0; i < n; ++i)
-      sweep(xs, n, k, i);
+    {
+      int start = ((1<<(k+1))-1);
+      int log_stride = k+1;
+      int last = (n - start)>>log_stride;
+      int length = 1<<k;
+
+      for (int i = 0; i <= last; ++i)
+        sum(xs, n, start, log_stride, length, i);
+    }
 }

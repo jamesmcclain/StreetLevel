@@ -34,7 +34,7 @@
 #ifndef __PREFIXSUM_CPU_H__
 #define __PREFIXSUM_CPU_H__
 
-extern void prefixsum(float * xs,
+extern void prefixsum(int * xs,
                       size_t n);
 
 #endif

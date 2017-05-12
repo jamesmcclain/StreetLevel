@@ -39,7 +39,7 @@
 
 #include <sys/time.h>
 
-#include "prefixsum_cpu.h"
+#include "prefixsum.h"
 #include "bitonic.h"
 #include "pdal.h"
 
@@ -72,8 +72,8 @@ int main(int argc, char ** argv)
   int n = 1<<(order);
   /* float * xs1 = malloc(sizeof(float) * n); */
   /* float * xs2 = malloc(sizeof(float) * n); */
-  float * ys1 = malloc(sizeof(float) * n);
-  float * ys2 = malloc(sizeof(float) * n);
+  int * ys1 = malloc(sizeof(int) * n);
+  int * ys2 = malloc(sizeof(int) * n);
 
   // Initialize
   opencl_init(4, &devices, info);
