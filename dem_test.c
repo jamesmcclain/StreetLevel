@@ -39,6 +39,7 @@
 
 #include <sys/time.h>
 
+#include "prefixsum_cpu.h"
 #include "bitonic.h"
 #include "pdal.h"
 
@@ -69,40 +70,49 @@ int main(int argc, char ** argv)
 
   int order; sscanf(argv[2], "%d", &order);
   int n = 1<<(order);
-  float * xs1 = malloc(sizeof(float) * n);
-  float * xs2 = malloc(sizeof(float) * n);
-  float * xs3 = malloc(sizeof(float) * n);
+  /* float * xs1 = malloc(sizeof(float) * n); */
+  /* float * xs2 = malloc(sizeof(float) * n); */
+  float * ys1 = malloc(sizeof(float) * n);
+  float * ys2 = malloc(sizeof(float) * n);
 
   // Initialize
   opencl_init(4, &devices, info);
   srand((unsigned int)time(NULL));
 
-  /* // Compute */
+  // Compute
   /* pdal_load(argv[1], 1<<12, 1<<12, transform, &projection); */
   /* fprintf(stderr, "wkt = %s\n", projection); */
   /* fprintf(stderr, "%lf %lf %lf %lf %lf %lf\n", */
   /*         transform[0], transform[1], transform[2], */
   /*         transform[3], transform[4], transform[5]); */
 
+  /* for (int i = 0; i < n; ++i) */
+  /*   xs1[i] = xs2[i] = (float)rand()/(float)(RAND_MAX); */
+
   for (int i = 0; i < n; ++i)
-    xs1[i] = xs2[i] = (float)rand()/(float)(RAND_MAX);
+    ys1[i] = ys2[i] = rand() % 17;
 
-  gettimeofday(&t1, NULL);
-  bitonic_cl(devices, info, xs1, n);
-  gettimeofday(&t2, NULL);
-  qsort(xs2, n, sizeof(float), compare);
-  gettimeofday(&t3, NULL);
+  /* gettimeofday(&t1, NULL); */
+  /* bitonic_cl(devices, info, xs1, n); */
+  /* gettimeofday(&t2, NULL); */
+  /* qsort(xs2, n, sizeof(float), compare); */
+  /* gettimeofday(&t3, NULL); */
 
-  assert(memcmp(xs1, xs2, sizeof(float) * n) == 0);
-  fprintf(stdout, "bitonic: %8ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
-  fprintf(stdout, "  qsort: %8ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec));
+  prefixsum(ys1, n);
+  for (int i = 1; i < n; ++i) ys2[i] += ys2[i-1];
+  assert(memcmp(ys1, ys2, sizeof(float) * n) == 0);
+
+  /* assert(memcmp(xs1, xs2, sizeof(float) * n) == 0); */
+  /* fprintf(stdout, "bitonic: %8ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec)); */
+  /* fprintf(stdout, "  qsort: %8ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec)); */
 
   // Cleanup
   opencl_finit(devices, info);
   /* free(projection); */
-  free(xs1);
-  free(xs2);
-  free(xs3);
+  /* free(xs1); */
+  /* free(xs2); */
+  free(ys1);
+  free(ys2);
 
   return 0;
 }
