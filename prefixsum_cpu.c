@@ -30,16 +30,41 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VIEWSHED_H__
-#define __VIEWSHED_H__
 
-#include "opencl.h"
+#include <stdio.h>
 
-extern void viewshed(int devices,
-                     const opencl_struct * info,
-                     const float * src, float * dst,
-                     int cols, int rows,
-                     int x, int y, float z,
-                     double xres, double yres);
 
-#endif
+// Reference: https://en.wikipedia.org/wiki/Prefix_sum#Parallel_algorithm
+
+
+void sweep(float * xs, int n, int k, int i)
+{
+  int i_prime = i - ((1<<(k+1)) - 1);
+  int length = (1<<k);
+
+  if (((i_prime % (1<<(k+1))) == 0) && (i + length < n))
+    xs[i + length] += xs[i];
+}
+
+void reduce(float * xs, int n, int k, int i)
+{
+  int i_prime = i - ((1<<k) - 1);
+  int length = (1<<k);
+
+  if (((i_prime % (1<<(k+1))) == 0) && (i + length < n))
+    xs[i + length] += xs[i];
+}
+
+void prefixsum(float * xs, int n)
+{
+  int max_k = 0;
+  for (max_k = 31; (max_k >= 0) && !(n & (1<<max_k)); --max_k); // n assumed to be a power of two
+
+  for (int k = 0; k < max_k; ++k)
+    for (int i = 0; i < n; ++i)
+      reduce(xs, n, k, i);
+
+  for (int k = max_k-1; k >= 0; --k)
+    for (int i = 0; i < n; ++i)
+      sweep(xs, n, k, i);
+}

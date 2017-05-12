@@ -30,16 +30,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __VIEWSHED_H__
-#define __VIEWSHED_H__
 
-#include "opencl.h"
+#ifndef __PREFIXSUM_CPU_H__
+#define __PREFIXSUM_CPU_H__
 
-extern void viewshed(int devices,
-                     const opencl_struct * info,
-                     const float * src, float * dst,
-                     int cols, int rows,
-                     int x, int y, float z,
-                     double xres, double yres);
+extern void prefixsum(float * xs,
+                      size_t n);
 
 #endif
