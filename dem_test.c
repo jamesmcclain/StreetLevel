@@ -39,8 +39,8 @@
 
 #include <sys/time.h>
 
-#include "prefixsum.h"
 #include "bitonic.h"
+#include "partition.h"
 #include "pdal.h"
 
 

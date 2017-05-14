@@ -33,31 +33,28 @@
 #include <stdio.h>
 #include <string.h>
 #include "opencl.h"
-#include "prefixsum.h"
+#include "partition.h"
 
-void prefixsum(int device, const opencl_struct * info, int * xs, cl_int n)
+void partition(int device, const opencl_struct * info, float * _xs, cl_float pivot, size_t _n)
 {
   const char * program_src;
   size_t program_src_length;
 
-  cl_int ret;
-  cl_mem buffer;
+  cl_int ret, n = _n;
+  cl_mem xs, xs_prime, bitsums;
   cl_program program;
-  cl_kernel kernel;
+  cl_kernel sum, filter, part;
 
   int max_k = 0;
-  for (max_k = 31; (max_k >= 0) && !(n & (1<<max_k)); --max_k); // n assumed to be a power of two
+  for (max_k = 31; (max_k >= 0) && !(_n & (1<<max_k)); --max_k); // n assumed to be a power of two
 
-  /*****************
-   * CREATE BUFFER *
-   *****************/
+  /******************
+   * CREATE BUFFERS *
+   ******************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateBuffer.html
-  buffer = clCreateBuffer(info[device].context,
-                          CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                          sizeof(cl_int) * n,
-                          (void *)xs,
-                          &ret);
-  ENSURE(ret, ret);
+  xs = clCreateBuffer(info[device].context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(cl_float) * _n, (void *)_xs, &ret); ENSURE(ret, ret);
+  xs_prime = clCreateBuffer(info[device].context, CL_MEM_READ_WRITE, sizeof(cl_float) * _n, NULL, &ret); ENSURE(ret, ret);
+  bitsums  = clCreateBuffer(info[device].context, CL_MEM_READ_WRITE, sizeof(cl_int)   * _n, NULL, &ret); ENSURE(ret, ret);
 
   /***********************
    * LOAD, BUILD PROGRAM *
@@ -65,72 +62,86 @@ void prefixsum(int device, const opencl_struct * info, int * xs, cl_int n)
   program_src = readfile("./sort.cl");
   program_src_length = strlen(program_src);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateProgramWithSource.html
-  program = clCreateProgramWithSource(info[device].context, 1, &program_src, &program_src_length, &ret);
-  ENSURE(ret, ret);
+  program = clCreateProgramWithSource(info[device].context, 1, &program_src, &program_src_length, &ret); ENSURE(ret, ret);
   free((void *)program_src);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clBuildProgram.html
   ENSURE(clBuildProgram(program, 1, &(info[device].device), NULL, NULL, NULL), ret);
 
-  /****************
-   * SETUP KERNEL *
-   ****************/
+  /*****************
+   * SETUP KERNELS *
+   *****************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clCreateKernel.html
-  kernel = clCreateKernel(program, "sum", &ret);
-  ENSURE(ret, ret);
+  sum = clCreateKernel(program, "sum", &ret); ENSURE(ret, ret);
+  filter = clCreateKernel(program, "filter", &ret); ENSURE(ret, ret);
+  part = clCreateKernel(program, "partition", &ret); ENSURE(ret, ret);
 
-  /******************
-   * EXECUTE KERNEL *
-   ******************/
+  /*******************
+   * EXECUTE KERNELS *
+   *******************/
+  // FILTER
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetKernelArg.html
-  ENSURE(clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffer), ret);
-  ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_int), &n), ret);
-  for (int k = 0; k < max_k; ++k)
+  ENSURE(clSetKernelArg(filter, 0, sizeof(cl_mem), &xs), ret);
+  ENSURE(clSetKernelArg(filter, 1, sizeof(cl_mem), &bitsums), ret);
+  ENSURE(clSetKernelArg(filter, 2, sizeof(cl_float), &pivot), ret);
+  {
+    size_t last = n>>1;
+    ENSURE(clEnqueueNDRangeKernel(info[device].queue, filter, 1, NULL, &last, NULL, 0, NULL, NULL), ret);
+  }
+
+  // PREFIX SUM
+  ENSURE(clSetKernelArg(sum, 0, sizeof(cl_mem), &bitsums), ret);
+  ENSURE(clSetKernelArg(sum, 1, sizeof(cl_int), &n), ret);
+  for (int k = 1; k < max_k; ++k)
     {
       cl_int start = ((1<<k)-1);
       cl_int log_stride = k+1;
-      size_t last = ((n - start)>>log_stride) + 1; // Want ids from 0 to ((n - start)>>log_stride) inclusive
+      size_t last = ((_n - start)>>log_stride) + 1; // Want ids from 0 to ((_n - start)>>log_stride) inclusive
       cl_int length = 1<<k;
 
-      ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_int), &start), ret);
-      ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &log_stride), ret);
-      ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &length), ret);
+      ENSURE(clSetKernelArg(sum, 2, sizeof(cl_int), &start), ret);
+      ENSURE(clSetKernelArg(sum, 3, sizeof(cl_int), &log_stride), ret);
+      ENSURE(clSetKernelArg(sum, 4, sizeof(cl_int), &length), ret);
       // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
-      ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
-                                    NULL, &last, NULL,
-                                    0, NULL, NULL), ret);
+      ENSURE(clEnqueueNDRangeKernel(info[device].queue, sum, 1, NULL, &last, NULL, 0, NULL, NULL), ret);
     }
   for (int k = max_k-1; k >= 0; --k)
     {
       cl_int start = ((1<<(k+1))-1);
       cl_int log_stride = k+1;
-      size_t last = ((n - start)>>log_stride) + 1;
+      size_t last = ((_n - start)>>log_stride) + 1;
       cl_int length = 1<<k;
 
-      ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_int), &start), ret);
-      ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &log_stride), ret);
-      ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &length), ret);
-      ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
+      ENSURE(clSetKernelArg(sum, 2, sizeof(cl_int), &start), ret);
+      ENSURE(clSetKernelArg(sum, 3, sizeof(cl_int), &log_stride), ret);
+      ENSURE(clSetKernelArg(sum, 4, sizeof(cl_int), &length), ret);
+      ENSURE(clEnqueueNDRangeKernel(info[device].queue, sum, 1,
                                     NULL, &last, NULL,
                                     0, NULL, NULL), ret);
     }
+
+  // PARTITION w/ PREFIX SUM
+  ENSURE(clSetKernelArg(part, 0, sizeof(cl_mem), &bitsums), ret);
+  ENSURE(clSetKernelArg(part, 1, sizeof(cl_mem), &xs), ret);
+  ENSURE(clSetKernelArg(part, 2, sizeof(cl_mem), &xs_prime), ret);
+  ENSURE(clSetKernelArg(part, 3, sizeof(cl_int), &n), ret);
+  ENSURE(clEnqueueNDRangeKernel(info[device].queue, part, 1, NULL, &_n, NULL, 0, NULL, NULL), ret);
 
   /***************************
    * READ RESULT FROM DEVICE *
    ***************************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueReadBuffer.html
-  ENSURE(clEnqueueReadBuffer(info[device].queue,
-                             buffer,
-                             CL_TRUE,
-                             0, sizeof(cl_int) * n, xs,
-                             0, NULL, NULL), ret);
+  ENSURE(clEnqueueReadBuffer(info[device].queue, xs_prime, CL_TRUE, 0, sizeof(cl_float) * _n, _xs, 0, NULL, NULL), ret);
 
   /*********************
    * RELEASE RESOURCES *
    *********************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseKernel.html
-  ENSURE(clReleaseKernel(kernel), ret);
+  ENSURE(clReleaseKernel(sum), ret);
+  ENSURE(clReleaseKernel(filter), ret);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseProgram.html
   ENSURE(clReleaseProgram(program), ret);
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseMemObject.html
-  ENSURE(clReleaseMemObject(buffer), ret);
+  ENSURE(clReleaseMemObject(xs), ret);
+  ENSURE(clReleaseMemObject(xs_prime), ret);
+  ENSURE(clReleaseMemObject(bitsums), ret);
 }

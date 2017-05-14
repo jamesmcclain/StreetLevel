@@ -30,16 +30,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#ifndef __PREFIXSUM_CPU_H__
-#define __PREFIXSUM_CPU_H__
+#ifndef __PARTITION_H__
+#define __PARTITION_H__
 
 #include <CL/cl.h>
 #include "opencl.h"
 
-extern void prefixsum(int device,
+extern void partition(int device,
                       const opencl_struct * info,
-                      int * xs,
-                      cl_int n);
+                      float * xs,
+                      cl_float pivot,
+                      size_t n);
 
 #endif
