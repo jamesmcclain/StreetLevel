@@ -32,13 +32,24 @@
 
 
 // Reference: https://en.wikipedia.org/wiki/Prefix_sum#Parallel_algorithm
-__kernel void sum(__global int * xs, int n, int start, int log_stride, int length)
+__kernel void sum(__global int * bitsum, int n, int start, int log_stride, int length)
 {
-  int i = get_global_id(0);
+  int i = (get_global_id(0)<<log_stride) + start;
+  int j = i + length;
 
-  i = (i<<log_stride) + start;
-  if (i + length < n)
-    xs[i + length] += xs[i];
+  if (j < n)
+    bitsum[j] += bitsum[i];
+}
+
+// Reference: https://courses.cs.washington.edu/courses/cse332/10sp/lectures/lecture20.pdf
+__kernel void filter(__global float * xs, __global int * bitsum, int n, float pivot)
+{
+  int i = (get_global_id(0)<<1);
+  int j = i + 1;
+  int i_bit = xs[i] < pivot ? 1:0;
+  int j_bit = xs[j] < pivot ? 1:0;
+
+  bitsum[j] = i_bit + j_bit;
 }
 
 // Reference: https://en.wikipedia.org/wiki/Bitonic_sorter
