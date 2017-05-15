@@ -32,13 +32,45 @@
 
 
 // Reference: https://en.wikipedia.org/wiki/Prefix_sum#Parallel_algorithm
-__kernel void sum(__global int * xs, int n, int start, int log_stride, int length)
+__kernel void sum(__global int * bitsum, int n, int start, int log_stride, int length)
+{
+  int i = (get_global_id(0)<<log_stride) + start;
+  int j = i + length;
+
+  if (j < n)
+    bitsum[j] += bitsum[i];
+}
+
+// Reference: https://courses.cs.washington.edu/courses/cse332/10sp/lectures/lecture20.pdf
+__kernel void filter(__global float * xs, __global int * bitsum, float pivot)
+{
+  int i = (get_global_id(0)<<1);
+  int j = i + 1;
+  int i_bit = xs[i] < pivot ? 1:0;
+  int j_bit = xs[j] < pivot ? 1:0;
+
+  bitsum[i] = i_bit;
+  bitsum[j] = i_bit + j_bit;
+}
+
+__kernel void partition(__global int * bitsums, __global float * src, __global float * dst, int n)
 {
   int i = get_global_id(0);
 
-  i = (i<<log_stride) + start;
-  if (i + length < n)
-    xs[i + length] += xs[i];
+  if (i == 0)
+    {
+      if (bitsums[0] == 1)
+        dst[0] = src[0]; // below pivot
+      else
+        dst[n-1] = src[0]; // above pivot
+    }
+  else if (i > 0)
+    {
+      if (bitsums[i] > bitsums[i-1])
+        dst[bitsums[i]-1] = src[i]; // below pivot
+      else
+        dst[n-1 - (i - bitsums[i])] = src[i]; // above pivot
+    }
 }
 
 // Reference: https://en.wikipedia.org/wiki/Bitonic_sorter
