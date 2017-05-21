@@ -119,7 +119,7 @@ void partition(int device, const opencl_struct * info, float * _xs, cl_float piv
                                     0, NULL, NULL), ret);
     }
 
-  // PARTITION w/ PREFIX SUM
+  // PARTITION using PREFIX SUM
   ENSURE(clSetKernelArg(part, 0, sizeof(cl_mem), &bitsums), ret);
   ENSURE(clSetKernelArg(part, 1, sizeof(cl_mem), &xs), ret);
   ENSURE(clSetKernelArg(part, 2, sizeof(cl_mem), &xs_prime), ret);
