@@ -18,7 +18,7 @@ dem_test: dem_test.o pdal.o opencl.o
 	$(CC) $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) -lstdc++ -o $@
 
 sort_test: sort_test.o opencl.o bitonic.o partition.o
-	$(CC) $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) -lstdc++ -o $@
+	$(CC) $^ $(OPENCL_LDFLAGS) -lstdc++ -o $@
 
 %.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
@@ -34,8 +34,8 @@ sort_test: sort_test.o opencl.o bitonic.o partition.o
 
 test: viewshed_test dem_test sort_test
 	# rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
-	# dem_test /tmp/interesting.las 20
-	sort_test 20
+	dem_test /tmp/interesting.las
+	sort_test 24
 
 valgrind: viewshed_test dem_test
 	# valgrind --leak-check=full viewshed_test /tmp/ned.tif /tmp/viewshed.tif
