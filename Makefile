@@ -14,7 +14,7 @@ all: viewshed_test dem_test
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -o $@
 
-dem_test: dem_test.o pdal.o opencl.o bitonic.o partition.o
+dem_test: dem_test.o pdal.o opencl.o
 	$(CC) $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) -lstdc++ -o $@
 
 %.o: %.c %.h Makefile
