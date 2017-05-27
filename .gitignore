@@ -3,3 +3,4 @@ core
 *.o
 viewshed_test
 dem_test
+sort_test
