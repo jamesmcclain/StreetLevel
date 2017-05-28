@@ -46,8 +46,8 @@ __kernel void filter(__global float * xs, __global int * bitsum, float pivot)
 {
   int i = (get_global_id(0)<<1);
   int j = i + 1;
-  int i_bit = xs[i] < pivot ? 1:0;
-  int j_bit = xs[j] < pivot ? 1:0;
+  int i_bit = xs[i] <= pivot ? 1:0;
+  int j_bit = xs[j] <= pivot ? 1:0;
 
   bitsum[i] = i_bit;
   bitsum[j] = i_bit + j_bit;
