@@ -32,24 +32,24 @@ sort_test: sort_test.o opencl.o bitonic.o partition.o
 %o: %.cpp Makefile
 	$(CXX) $(CXXFLAGS) $< -c -o $@
 
-test: viewshed_test dem_test sort_test
+test: dem_test sort_test viewshed_test
+	dem_test /tmp/1422.las
+	# sort_test 24
 	# rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
-	dem_test /tmp/interesting.las
-	sort_test 24
 
-valgrind: viewshed_test dem_test
+valgrind: dem_test sort_test viewshed_test
+	# valgrind --leak-check=full dem_test /tmp/1422.las blah
 	# valgrind --leak-check=full viewshed_test /tmp/ned.tif /tmp/viewshed.tif
-	valgrind --leak-check=full dem_test /tmp/interesting.las blah
 
-cachegrind: viewshed_test dem_test
+cachegrind: dem_test sort_test viewshed_test
+	# valgrind --tool=cachegrind --branch-sim=yes dem_test /tmp/1422.las blah
 	# valgrind --tool=cachegrind --branch-sim=yes viewshed_test /tmp/ned.tif /tmp/viewshed.tif
-	valgrind --tool=cachegrind --branch-sim=yes dem_test /tmp/interesting.las blah
 
 clean:
 	rm -f *.o
 
 cleaner: clean
-	rm -f viewshed_test dem_test
+	rm -f viewshed_test dem_test sort_test
 
 cleanest: cleaner
 	rm -f cachegrind.out.*

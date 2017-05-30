@@ -98,8 +98,8 @@ int main(int argc, char ** argv)
   /**********
    * OUTPUT *
    **********/
-  for (pivot_location = 0; ys[pivot_location] < pivot; ++pivot_location);
-  for (int i = pivot_location; i < n; ++i) assert(ys[i] >= pivot);
+  for (pivot_location = 0; ys[pivot_location] <= pivot; ++pivot_location);
+  for (int i = pivot_location; i < n; ++i) assert(ys[i] > pivot);
   assert(memcmp(xs1, xs2, sizeof(float) * n) == 0);
   fprintf(stdout, "        bitonic: %8ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
   fprintf(stdout, "          qsort: %8ld μs\n", (t3.tv_sec - t2.tv_sec) * 1000000 + (t3.tv_usec - t2.tv_usec));

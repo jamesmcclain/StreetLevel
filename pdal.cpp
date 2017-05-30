@@ -54,7 +54,6 @@ void pdal_load(const char * filename,
   PointTable table;
   PointViewPtr view;
   PointViewSet set;
-  // size_t point_size;
 
   options.add("filename", filename);
   reader.setOptions(options);
@@ -84,13 +83,14 @@ void pdal_load(const char * filename,
       exit(-1);
     }
 
-  for (unsigned int i = 0; i < header.pointCount(); ++i)
-    {
-      // double x, y, z;
+  fprintf(stderr, "pointCount = %ld\n", header.pointCount());
 
-      // x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
-      // y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
-      // z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
-      // fprintf(stderr, "%lf %lf %lf\n", x, y, z);
-    }
+  // for (unsigned int i = 0; i < header.pointCount(); ++i)
+  //   {
+  //     double x, y, z;
+  //     x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
+  //     y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
+  //     z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
+  //     fprintf(stderr, "%lf %lf %lf\n", x, y, z);
+  //   }
 }
