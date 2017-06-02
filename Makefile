@@ -2,11 +2,13 @@ GDAL_CFLAGS ?= -I$(HOME)/local/gdal/include
 GDAL_LDFLAGS ?= -L$(HOME)/local/gdal/lib -lgdal -lopenjp2
 PDAL_CXXFLAGS ?= -I$(HOME)/local/pdal/include
 PDAL_LDFLAGS ?= -L$(HOME)/local/pdal/lib -lpdalcpp -llaszip
+STXXL_CXXFLAGS ?= -I$(HOME)/local/stxxl/include
+STXXL_LDFLAGS ?= -L$(HOME)/local/stxxl/lib -lpthread -lstxxl
 OPENCL_LDFLAGS ?= -lOpenCL
 CFLAGS ?= -Wall -march=native -mtune=native -Ofast -g
 CXXFLAGS ?= -Wall -march=native -mtune=native -Ofast -g
 CFLAGS += -std=c11 $(GDAL_CFLAGS)
-CXXFLAGS += -std=c++11 $(PDAL_CXXFLAGS)
+CXXFLAGS += -std=c++11
 
 
 all: viewshed_test dem_test
@@ -15,7 +17,7 @@ viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -o $@
 
 dem_test: dem_test.o pdal.o opencl.o
-	$(CC) $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) -lstdc++ -o $@
+	$(CC) $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -lstdc++ -o $@
 
 sort_test: sort_test.o opencl.o bitonic.o partition.o
 	$(CC) $^ $(OPENCL_LDFLAGS) -lstdc++ -o $@
@@ -28,6 +30,9 @@ sort_test: sort_test.o opencl.o bitonic.o partition.o
 
 %.o: %.cpp %.h Makefile
 	$(CXX) $(CXXFLAGS) $< -c -o $@
+
+pdal.o: pdal.cpp pdal.h Makefile
+	$(CXX) -Wno-unknown-pragmas -Wno-terminate $(CXXFLAGS) $< $(PDAL_CXXFLAGS) $(STXXL_CXXFLAGS) -c -o $@
 
 %o: %.cpp Makefile
 	$(CXX) $(CXXFLAGS) $< -c -o $@
@@ -49,7 +54,7 @@ clean:
 	rm -f *.o
 
 cleaner: clean
-	rm -f viewshed_test dem_test sort_test
+	rm -f viewshed_test dem_test sort_test stxxl.errlog stxxl.log
 
 cleanest: cleaner
 	rm -f cachegrind.out.*

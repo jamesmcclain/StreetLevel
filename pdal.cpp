@@ -37,6 +37,7 @@
 #include <pdal/io/LasReader.hpp>
 #include <pdal/PointView.hpp>
 #include <pdal/StageFactory.hpp>
+#include <stxxl.h>
 #include "pdal.h"
 
 
@@ -55,6 +56,12 @@ void pdal_load(const char * filename,
   PointViewPtr view;
   PointViewSet set;
 
+  // STXXL.  Reference: http://stxxl.org/tags/master/install_config.html
+  stxxl::config * cfg = stxxl::config::get_instance();
+  cfg->add_disk( stxxl::disk_config("disk=/tmp/StreetLevel.stxxl, 8 GiB, syscall unlink"));
+  stxxl::VECTOR_GENERATOR<struct pdal_point>::result v;
+
+  // PDAL
   options.add("filename", filename);
   reader.setOptions(options);
   reader.prepare(table);
@@ -85,12 +92,18 @@ void pdal_load(const char * filename,
 
   fprintf(stderr, "pointCount = %ld\n", header.pointCount());
 
-  // for (unsigned int i = 0; i < header.pointCount(); ++i)
-  //   {
-  //     double x, y, z;
-  //     x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
-  //     y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
-  //     z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
-  //     fprintf(stderr, "%lf %lf %lf\n", x, y, z);
-  //   }
+  for (unsigned int i = 0; i < header.pointCount(); ++i)
+    {
+      struct pdal_point point;
+      point.x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
+      point.y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
+      point.z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
+      v.push_back(point);
+    }
+
+  for (int i = 0; i < 50; ++i)
+    {
+      struct pdal_point point = v[i];
+      fprintf(stdout, "%3d %lf %lf %lf\n", i, point.x, point.y, point.z);
+    }
 }
