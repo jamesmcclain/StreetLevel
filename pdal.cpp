@@ -37,6 +37,7 @@
 #include <pdal/io/LasReader.hpp>
 #include <pdal/PointView.hpp>
 #include <pdal/StageFactory.hpp>
+#include <stxxl/vector>
 #include "pdal.h"
 
 
@@ -54,6 +55,7 @@ void pdal_load(const char * filename,
   PointTable table;
   PointViewPtr view;
   PointViewSet set;
+  stxxl::vector<double[3]> v;
 
   options.add("filename", filename);
   reader.setOptions(options);
