@@ -1,3 +1,5 @@
+stxxl.errlog
+stxxl.log
 cachegrind.out.*
 core
 *.o

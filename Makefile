@@ -54,7 +54,7 @@ clean:
 	rm -f *.o
 
 cleaner: clean
-	rm -f viewshed_test dem_test sort_test
+	rm -f viewshed_test dem_test sort_test stxxl.errlog stxxl.log
 
 cleanest: cleaner
 	rm -f cachegrind.out.*

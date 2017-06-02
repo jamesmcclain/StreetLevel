@@ -34,6 +34,13 @@
 
 #include <stdint.h>
 
+struct pdal_point
+{
+  double x;
+  double y;
+  double z;
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
