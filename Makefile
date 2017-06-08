@@ -32,7 +32,7 @@ sort_test: sort_test.o opencl.o bitonic.o partition.o
 	$(CXX) $(CXXFLAGS) $< -c -o $@
 
 pdal.o: pdal.cpp pdal.h Makefile
-	$(CXX) -Wno-unknown-pragmas -Wno-terminate $(CXXFLAGS) $< $(PDAL_CXXFLAGS) $(STXXL_CXXFLAGS) -c -o $@
+	$(CXX) -fopenmp -Wno-terminate $(CXXFLAGS) $< $(PDAL_CXXFLAGS) $(STXXL_CXXFLAGS) -c -o $@
 
 %o: %.cpp Makefile
 	$(CXX) $(CXXFLAGS) $< -c -o $@
