@@ -3,7 +3,7 @@ GDAL_LDFLAGS ?= -L$(HOME)/local/gdal/lib -lgdal -lopenjp2
 PDAL_CXXFLAGS ?= -I$(HOME)/local/pdal/include
 PDAL_LDFLAGS ?= -L$(HOME)/local/pdal/lib -lpdalcpp -llaszip
 STXXL_CXXFLAGS ?= -I$(HOME)/local/stxxl/include
-STXXL_LDFLAGS ?= -L$(HOME)/local/stxxl/lib -lpthread -lstxxl
+STXXL_LDFLAGS ?= -L$(HOME)/local/stxxl/lib -lstxxl
 OPENCL_LDFLAGS ?= -lOpenCL
 CFLAGS ?= -Wall -march=native -mtune=native -Ofast -g
 CXXFLAGS ?= -Wall -march=native -mtune=native -Ofast -g
