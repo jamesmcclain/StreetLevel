@@ -11,16 +11,19 @@ CFLAGS += -std=c11 $(GDAL_CFLAGS)
 CXXFLAGS += -std=c++11
 
 
-all: viewshed_test dem_test
+all: dem_test sort_test viewshed_test libs
+
+.PHONY libs:
+	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C curve
 
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -o $@
 
 dem_test: dem_test.o pdal.o opencl.o
-	$(CC) $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -lstdc++ -o $@
+	$(CC) -rdynamic $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -o $@
 
 sort_test: sort_test.o opencl.o bitonic.o partition.o
-	$(CC) $^ $(OPENCL_LDFLAGS) -lstdc++ -o $@
+	$(CC) $^ $(OPENCL_LDFLAGS) -o $@
 
 %.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
@@ -52,9 +55,12 @@ cachegrind: dem_test sort_test viewshed_test
 
 clean:
 	rm -f *.o
+	make -C curve clean
 
 cleaner: clean
 	rm -f viewshed_test dem_test sort_test stxxl.errlog stxxl.log
+	make -C curve cleaner
 
 cleanest: cleaner
 	rm -f cachegrind.out.*
+	make -C curve cleanest
