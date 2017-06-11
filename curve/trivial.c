@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, James McClain
+ * Copyright (c) 2010-2014 and 2016-2017, James McClain and Mark Pugner
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,7 +12,8 @@
  *    distribution.
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement: This product
- *    includes software developed by Dr. James W. McClain.
+ *    includes software developed by Dr. James W. McClain and Dr. Mark
+ *    C. Pugner.
  * 4. Neither the names of the authors nor the names of the
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
@@ -29,31 +30,23 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __PDAL_H__
-#define __PDAL_H__
+#include "curve.h"
 
-#include <stdint.h>
-
-typedef struct pdal_point {
-  double x;
-  double y;
-  double z;
-  uint64_t key;
-} point;
+#define ONES ((uint32_t)(-1))
+#define DOUBLE_TO_BITS(x) (uint32_t)(ONES*x)
+#define BITS_TO_DOUBLE(b) (((double)b)/ONES)
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-  void pdal_load(const char * filename,
-                 const char * sofilename,
-                 uint32_t cols, uint32_t rows,
-                 double * transform,
-                 char ** projection);
-
-#ifdef __cplusplus
+uint64_t xy_to_curve(double x, double y) {
+  uint64_t x_bits = DOUBLE_TO_BITS(x);
+  uint64_t y_bits = DOUBLE_TO_BITS(y);
+  return (x_bits << 32) | (y_bits);
 }
-#endif
 
-#endif
+void curve_to_xy(uint64_t d, double * x, double * y) {
+  uint32_t x_bits = 0, y_bits = 0;
+  x_bits = d >> 32;
+  y_bits = ONES & d;
+  *x = BITS_TO_DOUBLE(x_bits);
+  *y = BITS_TO_DOUBLE(y_bits);
+}

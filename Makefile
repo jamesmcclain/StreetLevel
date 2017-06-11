@@ -3,7 +3,7 @@ GDAL_LDFLAGS ?= -L$(HOME)/local/gdal/lib -lgdal -lopenjp2
 PDAL_CXXFLAGS ?= -I$(HOME)/local/pdal/include
 PDAL_LDFLAGS ?= -L$(HOME)/local/pdal/lib -lpdalcpp -llaszip
 STXXL_CXXFLAGS ?= -I$(HOME)/local/stxxl/include
-STXXL_LDFLAGS ?= -L$(HOME)/local/stxxl/lib -lpthread -lstxxl
+STXXL_LDFLAGS ?= -L$(HOME)/local/stxxl/lib -lstxxl
 OPENCL_LDFLAGS ?= -lOpenCL
 CFLAGS ?= -Wall -march=native -mtune=native -Ofast -g
 CXXFLAGS ?= -Wall -march=native -mtune=native -Ofast -g
@@ -11,16 +11,19 @@ CFLAGS += -std=c11 $(GDAL_CFLAGS)
 CXXFLAGS += -std=c++11
 
 
-all: viewshed_test dem_test
+all: dem_test sort_test viewshed_test libs
+
+.PHONY libs:
+	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C curve
 
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -o $@
 
 dem_test: dem_test.o pdal.o opencl.o
-	$(CC) $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -lstdc++ -o $@
+	$(CC) -rdynamic -fopenmp $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -lm -o $@
 
 sort_test: sort_test.o opencl.o bitonic.o partition.o
-	$(CC) $^ $(OPENCL_LDFLAGS) -lstdc++ -o $@
+	$(CC) $^ $(OPENCL_LDFLAGS) -o $@
 
 %.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
@@ -38,7 +41,7 @@ pdal.o: pdal.cpp pdal.h Makefile
 	$(CXX) $(CXXFLAGS) $< -c -o $@
 
 test: dem_test sort_test viewshed_test
-	dem_test /tmp/1422.las
+	dem_test /tmp/1422.las ./curve/libMorton2D.so.1.0.1
 	# sort_test 24
 	# rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
 
@@ -52,9 +55,12 @@ cachegrind: dem_test sort_test viewshed_test
 
 clean:
 	rm -f *.o
+	make -C curve clean
 
 cleaner: clean
 	rm -f viewshed_test dem_test sort_test stxxl.errlog stxxl.log
+	make -C curve cleaner
 
 cleanest: cleaner
 	rm -f cachegrind.out.*
+	make -C curve cleanest
