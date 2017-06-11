@@ -60,7 +60,7 @@ int main(int argc, char ** argv)
   int devices;
   opencl_struct info[4];
 
-  if (argc < 2)
+  if (argc < 3)
     {
       fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
       exit(-1);
@@ -74,7 +74,7 @@ int main(int argc, char ** argv)
   /***********
    * COMPUTE *
    ***********/
-  pdal_load(argv[1], 1<<12, 1<<12, transform, &projection);
+  pdal_load(argv[1], argv[2], 1<<12, 1<<12, transform, &projection);
 
   /**********
    * OUTPUT *

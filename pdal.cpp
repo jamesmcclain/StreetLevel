@@ -32,18 +32,25 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <dlfcn.h>
+
 #include <pdal/Filter.hpp>
 #include <pdal/io/LasHeader.hpp>
 #include <pdal/io/LasReader.hpp>
 #include <pdal/PointView.hpp>
 #include <pdal/StageFactory.hpp>
 #include <stxxl.h>
+
 #include "pdal.h"
 
 
 using namespace pdal;
 
+typedef uint64_t(*to_curve)(double,double);
+typedef void(*from_curve)(uint64_t,double *, double *);
+
 void pdal_load(const char * filename,
+               const char * sofilename,
                uint32_t cols, uint32_t rows,
                double * transform,
                char ** projection)
@@ -55,6 +62,12 @@ void pdal_load(const char * filename,
   PointTable table;
   PointViewPtr view;
   PointViewSet set;
+
+  void * handle;
+  char * message;
+  to_curve xy_to_curve;
+  from_curve curve_to_xy;
+  double x_min, y_min, x_range, y_range;
 
   // STXXL.  Reference: http://stxxl.org/tags/master/install_config.html
   stxxl::config * cfg = stxxl::config::get_instance();
@@ -72,12 +85,16 @@ void pdal_load(const char * filename,
   *projection = (char *)calloc(n+1, sizeof(char));
   strncpy(*projection, proj.c_str(), n);
 
-  transform[0] = header.minX(); // top-left x
-  transform[1] = (header.maxX() - header.minX()) / cols; // west-east pixel resolution
+  x_min = header.minX();
+  y_min = header.minY();
+  x_range = (header.maxX() - x_min);
+  y_range = (header.maxY() - y_min);
+  transform[0] = x_min; // top-left x
+  transform[1] = x_range / cols; // west-east pixel resolution
   transform[2] = 0; // zero
-  transform[3] = header.maxY(); // top-left y
+  transform[3] = y_min; // top-left y
   transform[4] = 0; // zero
-  transform[5] = (header.minY() - header.maxY()) / rows; // north-south pixel resolution
+  transform[5] = y_range / rows; // north-south pixel resolution
 
   set = reader.execute(table);
   view = *(set.begin());
@@ -101,9 +118,34 @@ void pdal_load(const char * filename,
       v.push_back(point);
     }
 
+  handle = dlopen(sofilename,  RTLD_NOW); // NULL implies failure
+  if (handle == NULL) {
+    fprintf(stderr, "%s\n", dlerror());
+    exit(-1);
+  }
+
+  xy_to_curve = (to_curve)dlsym(handle, "xy_to_curve"); // NULL does not imply failure
+  if ((message = dlerror()) != NULL) {
+    fprintf(stderr, "%s\n", message);
+    exit(-1);
+  }
+
+  curve_to_xy = (from_curve)dlsym(handle, "curve_to_xy"); // NULL does not imply failure
+  if ((message = dlerror()) != NULL) {
+    fprintf(stderr, "%s\n", message);
+    exit(-1);
+  }
+
   for (int i = 0; i < 50; ++i)
     {
       struct pdal_point point = v[i];
-      fprintf(stdout, "%3d %lf %lf %lf\n", i, point.x, point.y, point.z);
+      uint64_t d;
+      double x_before, y_before, x_after, y_after;
+
+      x_before = (point.x - x_min) / x_range;
+      y_before = (point.y - y_min) / y_range;
+      d = xy_to_curve(x_before, y_before);
+      curve_to_xy(d, &x_after, &y_after);
+      fprintf(stderr, "%016lx   %1.10lf   %1.10lf   %1.10lf   %1.10lf\n", d, x_before, x_after, y_before, y_after);
     }
 }
