@@ -49,6 +49,25 @@ using namespace pdal;
 typedef uint64_t(*to_curve)(double,double);
 typedef void(*from_curve)(uint64_t,double *, double *);
 
+point min_point;
+point max_point;
+
+typedef struct key_comparator {
+  bool operator()(const point & a, const point & b) const {
+    return (a.key < b.key);
+  }
+
+  const point & min_value() const {
+    return min_point;
+  }
+
+  const point & max_value() const {
+    return max_point;
+  }
+
+} key_comparator;
+
+
 void pdal_load(const char * filename,
                const char * sofilename,
                uint32_t cols, uint32_t rows,
@@ -72,7 +91,7 @@ void pdal_load(const char * filename,
   // STXXL.  Reference: http://stxxl.org/tags/master/install_config.html
   stxxl::config * cfg = stxxl::config::get_instance();
   cfg->add_disk( stxxl::disk_config("disk=/tmp/StreetLevel.stxxl, 8 GiB, syscall unlink"));
-  stxxl::VECTOR_GENERATOR<struct pdal_point>::result v;
+  stxxl::VECTOR_GENERATOR<point>::result v;
 
   // PDAL
   options.add("filename", filename);
@@ -101,23 +120,14 @@ void pdal_load(const char * filename,
   fprintf(stderr, "dims = %ld\n", dims.size());
   if (!(view->point(0).hasDim(pdal::Dimension::Id::X) &&
         view->point(0).hasDim(pdal::Dimension::Id::Y) &&
-        view->point(0).hasDim(pdal::Dimension::Id::Z)))
-    {
-      fprintf(stderr, "X, Y, and Z required\n");
-      exit(-1);
-    }
+        view->point(0).hasDim(pdal::Dimension::Id::Z))) {
+    fprintf(stderr, "X, Y, and Z required\n");
+    exit(-1);
+  }
 
   fprintf(stderr, "pointCount = %ld\n", header.pointCount());
 
-  for (unsigned int i = 0; i < header.pointCount(); ++i)
-    {
-      struct pdal_point point;
-      point.x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
-      point.y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
-      point.z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
-      v.push_back(point);
-    }
-
+  // CURVE
   handle = dlopen(sofilename,  RTLD_NOW); // NULL implies failure
   if (handle == NULL) {
     fprintf(stderr, "%s\n", dlerror());
@@ -136,16 +146,29 @@ void pdal_load(const char * filename,
     exit(-1);
   }
 
-  for (int i = 0; i < 50; ++i)
-    {
-      struct pdal_point point = v[i];
-      uint64_t d;
-      double x_before, y_before, x_after, y_after;
+  // READ POINTS
+  for (unsigned int i = 0; i < header.pointCount(); ++i) {
+    point p;
+    p.x = view->point(i).getFieldAs<double>(pdal::Dimension::Id::X);
+    p.y = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Y);
+    p.z = view->point(i).getFieldAs<double>(pdal::Dimension::Id::Z);
+    p.key = xy_to_curve((p.x - x_min)/x_range, (p.y - y_min)/y_range);
+    v.push_back(p);
+  }
 
-      x_before = (point.x - x_min) / x_range;
-      y_before = (point.y - y_min) / y_range;
-      d = xy_to_curve(x_before, y_before);
-      curve_to_xy(d, &x_after, &y_after);
-      fprintf(stderr, "%016lx   %1.10lf   %1.10lf   %1.10lf   %1.10lf\n", d, x_before, x_after, y_before, y_after);
-    }
+  // MINIMUM AND MAXIMUM POINTS
+  min_point.key = 0;
+  max_point.key = 0xffffffffffffffff;
+
+  stxxl::sort(v.begin(), v.end(), key_comparator(), 1<<24);
+
+  // SHOW A FEW POINTS
+  for (unsigned int i = 0; i < 33; ++i) {
+    double x, y;
+    curve_to_xy(v[i].key, &x, &y);
+    x = (x * x_range) + x_min;
+    y = (y * y_range) + y_min;
+    fprintf(stdout, "%016lx \t%.10lf \t%.10lf \t%.10lf \t%.10lf\n", v[i].key, v[i].x, x, v[i].y, y);
+  }
+
 }

@@ -20,7 +20,7 @@ viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -o $@
 
 dem_test: dem_test.o pdal.o opencl.o
-	$(CC) -rdynamic $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -o $@
+	$(CC) -rdynamic -fopenmp $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -lm -o $@
 
 sort_test: sort_test.o opencl.o bitonic.o partition.o
 	$(CC) $^ $(OPENCL_LDFLAGS) -o $@

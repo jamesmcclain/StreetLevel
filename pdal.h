@@ -34,12 +34,13 @@
 
 #include <stdint.h>
 
-struct pdal_point
-{
+typedef struct pdal_point {
   double x;
   double y;
   double z;
-};
+  uint64_t key;
+} point;
+
 
 #ifdef __cplusplus
 extern "C" {
