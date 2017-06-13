@@ -182,7 +182,7 @@ void pdal_load(const char * sofilename,
     itr->key = xy_to_curve((x - x_min)/x_range, (y - y_min)/y_range);
   }
 
-  stxxl::sort(v.begin(), v.end(), key_comparator(), 1<<24);
+  stxxl::sort(v.begin(), v.end(), key_comparator(), 1<<30);
 
   /*********************
    * SHOW A FEW POINTS *
