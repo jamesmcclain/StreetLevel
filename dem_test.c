@@ -43,7 +43,7 @@
 #include "pdal.h"
 
 
-int main(int argc, char ** argv)
+int main(int argc, const char ** argv)
 {
   char * projection;
   double transform[6];
@@ -64,7 +64,7 @@ int main(int argc, char ** argv)
   /***********
    * COMPUTE *
    ***********/
-  pdal_load(argv[1], argv[2], 1<<12, 1<<12, transform, &projection);
+  pdal_load(argv[1], (argv + 2), argc - 2, 1<<12, 1<<12, transform, &projection);
 
   /**********
    * OUTPUT *
