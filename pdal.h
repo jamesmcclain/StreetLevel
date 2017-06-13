@@ -39,7 +39,7 @@ typedef struct pdal_point {
   double y;
   double z;
   uint64_t key;
-} point;
+} pdal_point;
 
 
 #ifdef __cplusplus

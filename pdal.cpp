@@ -39,7 +39,8 @@
 #include <pdal/io/LasReader.hpp>
 #include <pdal/PointView.hpp>
 #include <pdal/StageFactory.hpp>
-#include <stxxl.h>
+#include <stxxl/vector>
+#include <stxxl/sort>
 
 #include "pdal.h"
 
@@ -49,19 +50,19 @@ using namespace pdal;
 typedef uint64_t(*to_curve)(double,double);
 typedef void(*from_curve)(uint64_t,double *, double *);
 
-point min_point;
-point max_point;
+pdal_point min_point;
+pdal_point max_point;
 
 typedef struct key_comparator {
-  bool operator()(const point & a, const point & b) const {
+  bool operator()(const pdal_point & a, const pdal_point & b) const {
     return (a.key < b.key);
   }
 
-  const point & min_value() const {
+  const pdal_point & min_value() const {
     return min_point;
   }
 
-  const point & max_value() const {
+  const pdal_point & max_value() const {
     return max_point;
   }
 
@@ -88,7 +89,7 @@ void pdal_load(const char * sofilename,
    ***********************************************************************/
   stxxl::config * cfg = stxxl::config::get_instance();
   cfg->add_disk( stxxl::disk_config("disk=/tmp/StreetLevel.stxxl, 8 GiB, syscall unlink"));
-  stxxl::VECTOR_GENERATOR<point>::result v;
+  stxxl::VECTOR_GENERATOR<pdal_point>::result v;
 
   /***************
    * READ POINTS *
@@ -127,7 +128,7 @@ void pdal_load(const char * sofilename,
     view = *(set.begin());
 
     for (uint j = 0; j < header.pointCount(); ++j) {
-      point p;
+      pdal_point p;
       p.x = view->point(j).getFieldAs<double>(pdal::Dimension::Id::X);
       p.y = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Y);
       p.z = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Z);
