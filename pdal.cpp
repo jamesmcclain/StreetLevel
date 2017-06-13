@@ -68,8 +68,8 @@ typedef struct key_comparator {
 } key_comparator;
 
 
-void pdal_load(const char * filename,
-               const char * sofilename,
+void pdal_load(const char * sofilename,
+               const char * filename,
                uint32_t cols, uint32_t rows,
                double * transform,
                char ** projection)
@@ -86,7 +86,7 @@ void pdal_load(const char * filename,
   char * message;
   to_curve xy_to_curve;
   from_curve curve_to_xy;
-  double x_min, y_min, x_range, y_range;
+  double x_min, y_min, x_max, y_max, x_range, y_range;
 
   // STXXL.  Reference: http://stxxl.org/tags/master/install_config.html
   stxxl::config * cfg = stxxl::config::get_instance();
@@ -106,8 +106,10 @@ void pdal_load(const char * filename,
 
   x_min = header.minX();
   y_min = header.minY();
-  x_range = (header.maxX() - x_min);
-  y_range = (header.maxY() - y_min);
+  x_max = header.maxX();
+  y_max = header.maxY();
+  x_range = x_max - x_min;
+  y_range = y_max - y_min;
   transform[0] = x_min; // top-left x
   transform[1] = x_range / cols; // west-east pixel resolution
   transform[2] = 0; // zero

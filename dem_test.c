@@ -43,16 +43,6 @@
 #include "pdal.h"
 
 
-int compare(const void * _a, const void * _b)
-{
-  float a = *(float *)_a;
-  float b = *(float *)_b;
-
-  if (a < b) return -1;
-  else if (a > b) return 1;
-  else return 0;
-}
-
 int main(int argc, char ** argv)
 {
   char * projection;

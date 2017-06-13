@@ -46,8 +46,8 @@ typedef struct pdal_point {
 extern "C" {
 #endif
 
-  void pdal_load(const char * filename,
-                 const char * sofilename,
+  void pdal_load(const char * sofilename,
+                 const char * filename,
                  uint32_t cols, uint32_t rows,
                  double * transform,
                  char ** projection);
