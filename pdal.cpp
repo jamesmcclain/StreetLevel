@@ -79,8 +79,8 @@ void pdal_load(const char * sofilename,
   char * message;
   to_curve xy_to_curve;
   from_curve curve_to_xy;
-  double x_min = std::numeric_limits<double>::max(), y_min = std::numeric_limits<double>::min();
-  double x_max = std::numeric_limits<double>::max(), y_max = std::numeric_limits<double>::min();
+  double x_min = std::numeric_limits<double>::max(), y_min = std::numeric_limits<double>::max();
+  double x_max = std::numeric_limits<double>::min(), y_max = std::numeric_limits<double>::min();
   double x_range, y_range;
 
   /***********************************************************************
@@ -90,9 +90,9 @@ void pdal_load(const char * sofilename,
   cfg->add_disk( stxxl::disk_config("disk=/tmp/StreetLevel.stxxl, 8 GiB, syscall unlink"));
   stxxl::VECTOR_GENERATOR<point>::result v;
 
-  /********************
-   * CALCULATE EXTENT *
-   ********************/
+  /***************
+   * READ POINTS *
+   ***************/
   for (int i = 0; i < filenamec; ++i) {
     DimTypeList dims;
     LasHeader header;
@@ -100,6 +100,7 @@ void pdal_load(const char * sofilename,
     Options options;
     PointTable table;
     PointViewSet set;
+    PointViewPtr view;
 
     options.add("filename", filenamev[i]);
     reader.setOptions(options);
@@ -123,8 +124,15 @@ void pdal_load(const char * sofilename,
       y_max = header.maxY();
 
     set = reader.execute(table);
-    fprintf(stderr, "dims = %ld\n", dims.size());
-    fprintf(stderr, "pointCount = %ld\n", header.pointCount());
+    view = *(set.begin());
+
+    for (uint j = 0; j < header.pointCount(); ++j) {
+      point p;
+      p.x = view->point(j).getFieldAs<double>(pdal::Dimension::Id::X);
+      p.y = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Y);
+      p.z = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Z);
+      v.push_back(p);
+    }
   }
 
   x_range = x_max - x_min;
@@ -136,6 +144,10 @@ void pdal_load(const char * sofilename,
   transform[3] = y_min; // top-left y
   transform[4] = 0; // zero
   transform[5] = y_range / rows; // north-south pixel resolution
+
+  fprintf(stderr, "x: %.10lf \t%.10lf\n", x_min, x_max);
+  fprintf(stderr, "y: %.10lf \t%.10lf\n", y_min, y_max);
+  fprintf(stderr, "samples: %lld\n", v.size());
 
   /**************
    * LOAD CURVE *
@@ -158,43 +170,22 @@ void pdal_load(const char * sofilename,
     exit(-1);
   }
 
-  /***************
-   * READ POINTS *
-   ***************/
-  for (int i = 0; i < filenamec; ++i) {
-    DimTypeList dims;
-    LasHeader header;
-    LasReader reader;
-    Options options;
-    PointTable table;
-    PointViewSet set;
-    PointViewPtr view;
-
-    options.add("filename", filenamev[i]);
-    reader.setOptions(options);
-    reader.prepare(table);
-    header = reader.header();
-    set = reader.execute(table);
-    view = *(set.begin());
-
-    for (uint j = 0; j < header.pointCount(); ++j) {
-      point p;
-      p.x = view->point(j).getFieldAs<double>(pdal::Dimension::Id::X);
-      p.y = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Y);
-      p.z = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Z);
-      p.key = xy_to_curve((p.x - x_min)/x_range, (p.y - y_min)/y_range);
-      v.push_back(p);
-    }
-  }
-
   /********
    * SORT *
    ********/
   min_point.key = 0;
   max_point.key = 0xffffffffffffffff;
+
+  for (auto itr = v.begin(); itr != v.end(); ++itr) {
+    double x = itr-> x, y = itr->y;
+    itr->key = xy_to_curve((x - x_min)/x_range, (y - y_min)/y_range);
+  }
+
   stxxl::sort(v.begin(), v.end(), key_comparator(), 1<<24);
 
-  // SHOW A FEW POINTS
+  /*********************
+   * SHOW A FEW POINTS *
+   *********************/
   for (unsigned int i = 0; i < 33; ++i) {
     double x, y;
     curve_to_xy(v[i].key, &x, &y);
