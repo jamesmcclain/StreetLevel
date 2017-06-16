@@ -34,6 +34,8 @@
 #include <cstring>
 #include <dlfcn.h>
 
+#include <sys/time.h>
+
 #include <pdal/Filter.hpp>
 #include <pdal/io/LasHeader.hpp>
 #include <pdal/io/LasReader.hpp>
@@ -88,6 +90,8 @@ void pdal_load(const char * sofilename,
   double x_max = std::numeric_limits<double>::min(), y_max = std::numeric_limits<double>::min();
   double x_range, y_range;
 
+  struct timeval t1, t2, t3, t4, t5, t6;
+
   /***********************************************************************
    * STXXL.  Reference: http://stxxl.org/tags/master/install_config.html *
    ***********************************************************************/
@@ -100,6 +104,7 @@ void pdal_load(const char * sofilename,
   /************************
    * COMPUTE BOUNDING BOX *
    ************************/
+  gettimeofday(&t1, NULL);
   for (int i = 0; i < filenamec; ++i) {
     DimTypeList dims;
     LasHeader header;
@@ -126,6 +131,8 @@ void pdal_load(const char * sofilename,
   }
   x_range = x_max - x_min;
   y_range = y_max - y_min;
+  gettimeofday(&t2, NULL);
+  fprintf(stdout, "bounding box: %ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
 
   /**************
    * LOAD CURVE *
@@ -151,6 +158,7 @@ void pdal_load(const char * sofilename,
   /***************
    * READ POINTS *
    ***************/
+  gettimeofday(&t3, NULL);
   for (int i = 0; i < filenamec; ++i) {
     DimTypeList dims;
     LasHeader header;
@@ -183,6 +191,8 @@ void pdal_load(const char * sofilename,
       sorter.push(p);
     }
   }
+  gettimeofday(&t4, NULL);
+  fprintf(stdout, "input: %ld μs\n", (t4.tv_sec - t2.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));
 
   transform[0] = x_min; // top-left x
   transform[1] = x_range / cols; // west-east pixel resolution
@@ -191,14 +201,17 @@ void pdal_load(const char * sofilename,
   transform[4] = 0; // zero
   transform[5] = y_range / rows; // north-south pixel resolution
 
-  fprintf(stderr, "x: %.10lf \t%.10lf\n", x_min, x_max);
-  fprintf(stderr, "y: %.10lf \t%.10lf\n", y_min, y_max);
-  fprintf(stderr, "samples: %lld\n", sorter.size());
+  fprintf(stdout, "x: %.10lf \t%.10lf\n", x_min, x_max);
+  fprintf(stdout, "y: %.10lf \t%.10lf\n", y_min, y_max);
+  fprintf(stdout, "samples: %lld\n", sorter.size());
 
   /********
    * SORT *
    ********/
+  gettimeofday(&t5, NULL);
   sorter.sort();
+  gettimeofday(&t6, NULL);
+  fprintf(stdout, "sort: %ld μs\n", (t6.tv_sec - t5.tv_sec) * 1000000 + (t6.tv_usec - t5.tv_usec));
 
   /*********************
    * SHOW A FEW POINTS *
