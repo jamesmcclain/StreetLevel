@@ -34,38 +34,45 @@
 #include <cstring>
 #include <dlfcn.h>
 
+#include <sys/time.h>
+
 #include <pdal/Filter.hpp>
 #include <pdal/io/LasHeader.hpp>
 #include <pdal/io/LasReader.hpp>
 #include <pdal/PointView.hpp>
 #include <pdal/StageFactory.hpp>
-#include <stxxl.h>
+#include <stxxl/sorter>
 
 #include "pdal.h"
 
 
 using namespace pdal;
 
-typedef uint64_t(*to_curve)(double,double);
-typedef void(*from_curve)(uint64_t,double *, double *);
-
-point min_point;
-point max_point;
+// Sorting
+pdal_point min_point;
+pdal_point max_point;
 
 typedef struct key_comparator {
-  bool operator()(const point & a, const point & b) const {
+  bool operator()(const pdal_point & a, const pdal_point & b) const {
     return (a.key < b.key);
   }
 
-  const point & min_value() const {
+  const pdal_point & min_value() const {
     return min_point;
   }
 
-  const point & max_value() const {
+  const pdal_point & max_value() const {
     return max_point;
   }
 
 } key_comparator;
+
+
+typedef stxxl::sorter<pdal_point, key_comparator> point_sorter;
+
+// Indexing
+typedef uint64_t(*to_curve)(double,double);
+typedef void(*from_curve)(uint64_t,double *, double *);
 
 
 void pdal_load(const char * sofilename,
@@ -83,16 +90,21 @@ void pdal_load(const char * sofilename,
   double x_max = std::numeric_limits<double>::min(), y_max = std::numeric_limits<double>::min();
   double x_range, y_range;
 
+  struct timeval t1, t2, t3, t4, t5, t6;
+
   /***********************************************************************
    * STXXL.  Reference: http://stxxl.org/tags/master/install_config.html *
    ***********************************************************************/
   stxxl::config * cfg = stxxl::config::get_instance();
-  cfg->add_disk( stxxl::disk_config("disk=/tmp/StreetLevel.stxxl, 8 GiB, syscall unlink"));
-  stxxl::VECTOR_GENERATOR<point>::result v;
+  cfg->add_disk( stxxl::disk_config("disk=/tmp/StreetLevel.stxxl, 0, syscall unlink"));
+  min_point.key = 0;
+  max_point.key = 0xffffffffffffffff;
+  point_sorter sorter(key_comparator(), (1<<30));
 
-  /***************
-   * READ POINTS *
-   ***************/
+  /************************
+   * COMPUTE BOUNDING BOX *
+   ************************/
+  gettimeofday(&t1, NULL);
   for (int i = 0; i < filenamec; ++i) {
     DimTypeList dims;
     LasHeader header;
@@ -107,47 +119,20 @@ void pdal_load(const char * sofilename,
     reader.prepare(table);
     header = reader.header();
 
-    if (i == 0) {
-      std::string proj = header.srs().getWKT().c_str();
-      int n = proj.length();
-      *projection = (char *)calloc(n+1, sizeof(char));
-      strncpy(*projection, proj.c_str(), n);
-    }
+    double h_x_min = header.minX();
+    double h_x_max = header.maxX();
+    double h_y_min = header.minY();
+    double h_y_max = header.maxY();
 
-    if (x_min > header.minX())
-      x_min = header.minX();
-    if (y_min > header.minY())
-      y_min = header.minY();
-    if (x_max < header.maxX())
-      x_max = header.maxX();
-    if (y_max < header.maxY())
-      y_max = header.maxY();
-
-    set = reader.execute(table);
-    view = *(set.begin());
-
-    for (uint j = 0; j < header.pointCount(); ++j) {
-      point p;
-      p.x = view->point(j).getFieldAs<double>(pdal::Dimension::Id::X);
-      p.y = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Y);
-      p.z = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Z);
-      v.push_back(p);
-    }
+    if (h_x_min < x_min) x_min = h_x_min;
+    if (h_x_max > x_max) x_max = h_x_max;
+    if (h_y_min < y_min) y_min = h_y_min;
+    if (h_y_max > y_max) y_max = h_y_max;
   }
-
   x_range = x_max - x_min;
   y_range = y_max - y_min;
-
-  transform[0] = x_min; // top-left x
-  transform[1] = x_range / cols; // west-east pixel resolution
-  transform[2] = 0; // zero
-  transform[3] = y_min; // top-left y
-  transform[4] = 0; // zero
-  transform[5] = y_range / rows; // north-south pixel resolution
-
-  fprintf(stderr, "x: %.10lf \t%.10lf\n", x_min, x_max);
-  fprintf(stderr, "y: %.10lf \t%.10lf\n", y_min, y_max);
-  fprintf(stderr, "samples: %lld\n", v.size());
+  gettimeofday(&t2, NULL);
+  fprintf(stdout, "bounding box: %ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
 
   /**************
    * LOAD CURVE *
@@ -170,28 +155,75 @@ void pdal_load(const char * sofilename,
     exit(-1);
   }
 
+  /***************
+   * READ POINTS *
+   ***************/
+  gettimeofday(&t3, NULL);
+  for (int i = 0; i < filenamec; ++i) {
+    DimTypeList dims;
+    LasHeader header;
+    LasReader reader;
+    Options options;
+    PointTable table;
+    PointViewSet set;
+    PointViewPtr view;
+
+    options.add("filename", filenamev[i]);
+    reader.setOptions(options);
+    reader.prepare(table);
+    header = reader.header();
+    set = reader.execute(table);
+    view = *(set.begin());
+
+    if (i == 0) {
+      std::string proj = header.srs().getWKT().c_str();
+      int n = proj.length();
+      *projection = (char *)calloc(n+1, sizeof(char));
+      strncpy(*projection, proj.c_str(), n);
+    }
+
+    for (uint j = 0; j < header.pointCount(); ++j) {
+      pdal_point p;
+      p.x = view->point(j).getFieldAs<double>(pdal::Dimension::Id::X);
+      p.y = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Y);
+      p.z = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Z);
+      p.key = xy_to_curve((p.x - x_min)/x_range, (p.y - y_min)/y_range);
+      sorter.push(p);
+    }
+  }
+  gettimeofday(&t4, NULL);
+  fprintf(stdout, "input: %ld μs\n", (t4.tv_sec - t2.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));
+
+  transform[0] = x_min; // top-left x
+  transform[1] = x_range / cols; // west-east pixel resolution
+  transform[2] = 0; // zero
+  transform[3] = y_min; // top-left y
+  transform[4] = 0; // zero
+  transform[5] = y_range / rows; // north-south pixel resolution
+
+  fprintf(stdout, "x: %.10lf \t%.10lf\n", x_min, x_max);
+  fprintf(stdout, "y: %.10lf \t%.10lf\n", y_min, y_max);
+  fprintf(stdout, "samples: %lld\n", sorter.size());
+
   /********
    * SORT *
    ********/
-  min_point.key = 0;
-  max_point.key = 0xffffffffffffffff;
-
-  for (auto itr = v.begin(); itr != v.end(); ++itr) {
-    double x = itr-> x, y = itr->y;
-    itr->key = xy_to_curve((x - x_min)/x_range, (y - y_min)/y_range);
-  }
-
-  stxxl::sort(v.begin(), v.end(), key_comparator(), 1<<24);
+  gettimeofday(&t5, NULL);
+  sorter.sort();
+  gettimeofday(&t6, NULL);
+  fprintf(stdout, "sort: %ld μs\n", (t6.tv_sec - t5.tv_sec) * 1000000 + (t6.tv_usec - t5.tv_usec));
 
   /*********************
    * SHOW A FEW POINTS *
    *********************/
-  for (unsigned int i = 0; i < 33; ++i) {
+  for (unsigned int i = 0; i < 33; ++i, ++sorter) {
     double x, y;
-    curve_to_xy(v[i].key, &x, &y);
+    pdal_point p = *sorter;
+
+    curve_to_xy(p.key, &x, &y);
     x = (x * x_range) + x_min;
     y = (y * y_range) + y_min;
-    fprintf(stdout, "%016lx \t%.10lf \t%.10lf \t%.10lf \t%.10lf\n", v[i].key, v[i].x, x, v[i].y, y);
+    fprintf(stdout, "%016lx \t%.10lf \t%.10lf \t%.10lf \t%.10lf\n", p.key, p.x, x, p.y, y);
   }
 
 }
