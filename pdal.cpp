@@ -91,17 +91,39 @@ void pdal_load(const char * sofilename,
   /***********************************************************************
    * STXXL.  Reference: http://stxxl.org/tags/master/install_config.html *
    ***********************************************************************/
-  // stxxl::config * cfg = stxxl::config::get_instance();
-  // cfg->add_disk( stxxl::disk_config("disk=/tmp/StreetLevel.stxxl, 8 GiB, syscall unlink"));
+  stxxl::config * cfg = stxxl::config::get_instance();
+  cfg->add_disk( stxxl::disk_config("disk=/tmp/StreetLevel.stxxl, 0, syscall unlink"));
   min_point.key = 0;
   max_point.key = 0xffffffffffffffff;
   point_sorter sorter(key_comparator(), (1<<30));
 
-  // XXX
-  x_min = 391800.0000000000;
-  x_max = 392599.9900000000;
-  y_min = 140200.0000000000;
-  y_max = 141799.9900000000;
+  /************************
+   * COMPUTE BOUNDING BOX *
+   ************************/
+  for (int i = 0; i < filenamec; ++i) {
+    DimTypeList dims;
+    LasHeader header;
+    LasReader reader;
+    Options options;
+    PointTable table;
+    PointViewSet set;
+    PointViewPtr view;
+
+    options.add("filename", filenamev[i]);
+    reader.setOptions(options);
+    reader.prepare(table);
+    header = reader.header();
+
+    double h_x_min = header.minX();
+    double h_x_max = header.maxX();
+    double h_y_min = header.minY();
+    double h_y_max = header.maxY();
+
+    if (h_x_min < x_min) x_min = h_x_min;
+    if (h_x_max > x_max) x_max = h_x_max;
+    if (h_y_min < y_min) y_min = h_y_min;
+    if (h_y_max > y_max) y_max = h_y_max;
+  }
   x_range = x_max - x_min;
   y_range = y_max - y_min;
 
