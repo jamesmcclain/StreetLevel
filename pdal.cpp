@@ -47,8 +47,9 @@
 #include <pdal/StageFactory.hpp>
 #include <stxxl/sorter>
 
-#include "curve/curve_interface.h"
 #include "pdal.h"
+#include "curve/curve_interface.h"
+#include "index/index.h"
 
 using namespace pdal;
 
@@ -191,32 +192,19 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
           ANSI_COLOR_RED "sort: %ld μs" ANSI_COLOR_RESET "\n",
           USECONDS);
 
-  /****************
-   * WRITE HEADER *
-   ****************/
+  /**************
+   * WRITE DATA *
+   **************/
   unsigned long long bytes = 0;
-  char * name_string = curve_name();
-  int name_length = strlen(name_string) + 1;
-  int version = curve_version();
-  int projection_length = strlen(projection_string) + 1;
   int fd = open(ifilename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 
-  bytes += write(fd, &name_length, sizeof(name_length));
-  bytes += write(fd, name_string, name_length);
-  bytes += write(fd, &version, sizeof(version));
-  bytes += write(fd, &projection_length, sizeof(projection_length));
-  bytes += write(fd, projection_string, projection_length);
-  bytes += write(fd, &x_min, sizeof(x_min));
-  bytes += write(fd, &x_max, sizeof(x_max));
-  bytes += write(fd, &y_min, sizeof(y_min));
-  bytes += write(fd, &y_max, sizeof(y_max));
-  bytes += write(fd, &sample_count, sizeof(sample_count));
-
-  /****************
-   * WRITE POINTS *
-   ****************/
   gettimeofday(&t1, NULL);
-  for (unsigned long long i = 0; i < sample_count; ++i, ++sorter) {
+  bytes = write_header(fd,
+                       curve_name(), curve_version(),
+                       projection_string,
+                       x_min, x_max, y_min, y_max,
+                       sample_count);
+  for (uint64_t i = 0; i < sample_count; ++i, ++sorter) {
     pdal_point p = *sorter;
     bytes += write(fd, &p, sizeof(p));
   }

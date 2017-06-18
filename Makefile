@@ -11,12 +11,17 @@ CFLAGS += -std=c11 $(GDAL_CFLAGS)
 CXXFLAGS += -std=c++11
 
 
-all: index libs
+.PHONY: lib idx
 
-.PHONY libs:
+all: point_index lib idx
+
+lib:
 	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C curve
 
-index: index.o opencl.o pdal.o curve/curve_interface.o
+idx:
+	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C index
+
+point_index: point_index.o opencl.o pdal.o curve/curve_interface.o index/write.o
 	$(CC) -rdynamic -fopenmp $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -lm -o $@
 
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
@@ -55,12 +60,15 @@ cachegrind: sort_test viewshed_test
 clean:
 	rm -f *.o
 	make -C curve clean
+	make -C index clean
 
 cleaner: clean
-	rm -f index viewshed_test sort_test
+	rm -f point_index viewshed_test sort_test
 	rm -f stxxl.errlog stxxl.log
 	make -C curve cleaner
+	make -C index cleaner
 
 cleanest: cleaner
 	rm -f cachegrind.out.*
 	make -C curve cleanest
+	make -C index cleanest
