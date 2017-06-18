@@ -46,12 +46,12 @@ int main(int argc, const char ** argv)
 {
   if (argc < 3)
     {
-      fprintf(stderr, "Usage: %s <so_filename> [<las_filename>]+", argv[0]);
+      fprintf(stderr, "Usage: %s <so_filename> <index_filename> [<las_filename>]+", argv[0]);
       exit(-1);
     }
 
   load_curve(argv[1]);
-  pdal_load((argv + 2), argc - 2);
+  pdal_load(argv[2], (argv + 3), argc - 3);
 
   return 0;
 }

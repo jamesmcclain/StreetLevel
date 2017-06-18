@@ -31,9 +31,14 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstdint>
 #include <cstring>
 
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include <pdal/Filter.hpp>
 #include <pdal/io/LasHeader.hpp>
@@ -70,13 +75,14 @@ typedef struct key_comparator {
 typedef stxxl::sorter<pdal_point, key_comparator> point_sorter;
 
 
-void pdal_load(const char ** filenamev, int filenamec) {
+void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
   double x_min = std::numeric_limits<double>::max(), y_min = std::numeric_limits<double>::max();
   double x_max = std::numeric_limits<double>::min(), y_max = std::numeric_limits<double>::min();
   double x_range, y_range;
-  char * projection = NULL;
+  char * projection_string = NULL;
+  unsigned long long sample_count;
 
-  struct timeval t1, t2, t3, t4, t5, t6;
+  struct timeval t1, t2, t3, t4, t5, t6, t7, t8;
 
   /***********************************************************************
    * STXXL.  Reference: http://stxxl.org/tags/master/install_config.html *
@@ -143,8 +149,8 @@ void pdal_load(const char ** filenamev, int filenamec) {
     if (i == 0) {
       std::string proj = header.srs().getWKT().c_str();
       int n = proj.length();
-      projection = (char *)calloc(n+1, sizeof(char));
-      strncpy(projection, proj.c_str(), n);
+      projection_string = (char *)calloc(n+1, sizeof(char));
+      strncpy(projection_string, proj.c_str(), n);
     }
 
     for (uint j = 0; j < header.pointCount(); ++j) {
@@ -157,11 +163,9 @@ void pdal_load(const char ** filenamev, int filenamec) {
     }
   }
   gettimeofday(&t4, NULL);
-  fprintf(stdout, "input: %ld μs\n", (t4.tv_sec - t2.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));
-
-  fprintf(stdout, "x: %.10lf \t%.10lf\n", x_min, x_max);
-  fprintf(stdout, "y: %.10lf \t%.10lf\n", y_min, y_max);
-  fprintf(stdout, "samples: %lld\n", sorter.size());
+  sample_count = sorter.size();
+  fprintf(stdout, "input: %lld samples, %ld μs\n",
+          sample_count, (t4.tv_sec - t2.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));
 
   /********
    * SORT *
@@ -171,18 +175,42 @@ void pdal_load(const char ** filenamev, int filenamec) {
   gettimeofday(&t6, NULL);
   fprintf(stdout, "sort: %ld μs\n", (t6.tv_sec - t5.tv_sec) * 1000000 + (t6.tv_usec - t5.tv_usec));
 
-  /*********************
-   * SHOW A FEW POINTS *
-   *********************/
-  for (unsigned int i = 0; i < 33; ++i, ++sorter) {
-    double x, y;
+  /****************
+   * WRITE HEADER *
+   ****************/
+  unsigned long long bytes = 0;
+  char * name_string = curve_name();
+  int name_length = strlen(name_string) + 1;
+  int version = curve_version();
+  int projection_length = strlen(projection_string) + 1;
+  int fd = open(ifilename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+
+  bytes += write(fd, &name_length, sizeof(name_length));
+  bytes += write(fd, name_string, name_length);
+  bytes += write(fd, &version, sizeof(version));
+  bytes += write(fd, &projection_length, sizeof(projection_length));
+  bytes += write(fd, projection_string, projection_length);
+  bytes += write(fd, &x_min, sizeof(x_min));
+  bytes += write(fd, &x_max, sizeof(x_max));
+  bytes += write(fd, &y_min, sizeof(y_min));
+  bytes += write(fd, &y_max, sizeof(y_max));
+  bytes += write(fd, &sample_count, sizeof(sample_count));
+
+  /****************
+   * WRITE POINTS *
+   ****************/
+  gettimeofday(&t7, NULL);
+  for (unsigned long long i = 0; i < sample_count; ++i, ++sorter) {
     pdal_point p = *sorter;
-
-    curve_to_xy(p.key, &x, &y);
-    x = (x * x_range) + x_min;
-    y = (y * y_range) + y_min;
-    fprintf(stdout, "%016lx \t%.10lf \t%.10lf \t%.10lf \t%.10lf\n", p.key, p.x, x, p.y, y);
+    bytes += write(fd, &p, sizeof(p));
   }
+  gettimeofday(&t8, NULL);
+  fprintf(stdout, "index: %lld bytes written, %ld μs\n",
+          bytes, (t8.tv_sec - t7.tv_sec) * 1000000 + (t8.tv_usec - t7.tv_usec));
 
-  free(projection);
+  /***********
+   * CLEANUP *
+   ***********/
+  free(projection_string);
+  close(fd);
 }

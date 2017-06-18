@@ -41,7 +41,7 @@ pdal.o: pdal.cpp pdal.h Makefile
 	$(CXX) $(CXXFLAGS) $< -c -o $@
 
 test: dem_test sort_test viewshed_test
-	dem_test ./curve/libMorton2D.so.1.0.1 /tmp/1422.las
+	dem_test ./curve/libMorton2D.so.1.0.1 /tmp/index.SL /tmp/1422.las
 	# sort_test 24
 	# rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
 
