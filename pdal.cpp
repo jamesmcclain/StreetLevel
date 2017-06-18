@@ -31,10 +31,14 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstdint>
 #include <cstring>
-#include <dlfcn.h>
 
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include <pdal/Filter.hpp>
 #include <pdal/io/LasHeader.hpp>
@@ -43,10 +47,21 @@
 #include <pdal/StageFactory.hpp>
 #include <stxxl/sorter>
 
+#include "curve/curve_interface.h"
 #include "pdal.h"
 
-
 using namespace pdal;
+
+#define USECONDS ((t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec))
+
+// Reference: https://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
+#define ANSI_COLOR_RED     "\x1b[31;1m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
 // Sorting
 pdal_point min_point;
@@ -70,27 +85,15 @@ typedef struct key_comparator {
 
 typedef stxxl::sorter<pdal_point, key_comparator> point_sorter;
 
-// Indexing
-typedef uint64_t(*to_curve)(double,double);
-typedef void(*from_curve)(uint64_t,double *, double *);
 
-
-void pdal_load(const char * sofilename,
-               const char ** filenamev,
-               int filenamec,
-               uint32_t cols, uint32_t rows,
-               double * transform,
-               char ** projection)
-{
-  void * handle;
-  char * message;
-  to_curve xy_to_curve;
-  from_curve curve_to_xy;
+void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
   double x_min = std::numeric_limits<double>::max(), y_min = std::numeric_limits<double>::max();
   double x_max = std::numeric_limits<double>::min(), y_max = std::numeric_limits<double>::min();
   double x_range, y_range;
+  char * projection_string = NULL;
+  unsigned long long sample_count;
 
-  struct timeval t1, t2, t3, t4, t5, t6;
+  struct timeval t1, t2;
 
   /***********************************************************************
    * STXXL.  Reference: http://stxxl.org/tags/master/install_config.html *
@@ -132,33 +135,14 @@ void pdal_load(const char * sofilename,
   x_range = x_max - x_min;
   y_range = y_max - y_min;
   gettimeofday(&t2, NULL);
-  fprintf(stdout, "bounding box: %ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
-
-  /**************
-   * LOAD CURVE *
-   **************/
-  handle = dlopen(sofilename,  RTLD_NOW); // NULL implies failure
-  if (handle == NULL) {
-    fprintf(stderr, "%s\n", dlerror());
-    exit(-1);
-  }
-
-  xy_to_curve = (to_curve)dlsym(handle, "xy_to_curve"); // NULL does not imply failure
-  if ((message = dlerror()) != NULL) {
-    fprintf(stderr, "%s\n", message);
-    exit(-1);
-  }
-
-  curve_to_xy = (from_curve)dlsym(handle, "curve_to_xy"); // NULL does not imply failure
-  if ((message = dlerror()) != NULL) {
-    fprintf(stderr, "%s\n", message);
-    exit(-1);
-  }
+  fprintf(stdout,
+          ANSI_COLOR_RED "bounding box: %ld μs" ANSI_COLOR_RESET "\n",
+          USECONDS);
 
   /***************
    * READ POINTS *
    ***************/
-  gettimeofday(&t3, NULL);
+  gettimeofday(&t1, NULL);
   for (int i = 0; i < filenamec; ++i) {
     DimTypeList dims;
     LasHeader header;
@@ -178,8 +162,8 @@ void pdal_load(const char * sofilename,
     if (i == 0) {
       std::string proj = header.srs().getWKT().c_str();
       int n = proj.length();
-      *projection = (char *)calloc(n+1, sizeof(char));
-      strncpy(*projection, proj.c_str(), n);
+      projection_string = (char *)calloc(n+1, sizeof(char));
+      strncpy(projection_string, proj.c_str(), n);
     }
 
     for (uint j = 0; j < header.pointCount(); ++j) {
@@ -191,39 +175,59 @@ void pdal_load(const char * sofilename,
       sorter.push(p);
     }
   }
-  gettimeofday(&t4, NULL);
-  fprintf(stdout, "input: %ld μs\n", (t4.tv_sec - t2.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));
-
-  transform[0] = x_min; // top-left x
-  transform[1] = x_range / cols; // west-east pixel resolution
-  transform[2] = 0; // zero
-  transform[3] = y_min; // top-left y
-  transform[4] = 0; // zero
-  transform[5] = y_range / rows; // north-south pixel resolution
-
-  fprintf(stdout, "x: %.10lf \t%.10lf\n", x_min, x_max);
-  fprintf(stdout, "y: %.10lf \t%.10lf\n", y_min, y_max);
-  fprintf(stdout, "samples: %lld\n", sorter.size());
+  gettimeofday(&t2, NULL);
+  sample_count = sorter.size();
+  fprintf(stdout,
+          ANSI_COLOR_RED "input: %ld μs, %lld samples" ANSI_COLOR_RESET "\n",
+          USECONDS, sample_count);
 
   /********
    * SORT *
    ********/
-  gettimeofday(&t5, NULL);
+  gettimeofday(&t1, NULL);
   sorter.sort();
-  gettimeofday(&t6, NULL);
-  fprintf(stdout, "sort: %ld μs\n", (t6.tv_sec - t5.tv_sec) * 1000000 + (t6.tv_usec - t5.tv_usec));
+  gettimeofday(&t2, NULL);
+  fprintf(stdout,
+          ANSI_COLOR_RED "sort: %ld μs" ANSI_COLOR_RESET "\n",
+          USECONDS);
 
-  /*********************
-   * SHOW A FEW POINTS *
-   *********************/
-  for (unsigned int i = 0; i < 33; ++i, ++sorter) {
-    double x, y;
+  /****************
+   * WRITE HEADER *
+   ****************/
+  unsigned long long bytes = 0;
+  char * name_string = curve_name();
+  int name_length = strlen(name_string) + 1;
+  int version = curve_version();
+  int projection_length = strlen(projection_string) + 1;
+  int fd = open(ifilename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+
+  bytes += write(fd, &name_length, sizeof(name_length));
+  bytes += write(fd, name_string, name_length);
+  bytes += write(fd, &version, sizeof(version));
+  bytes += write(fd, &projection_length, sizeof(projection_length));
+  bytes += write(fd, projection_string, projection_length);
+  bytes += write(fd, &x_min, sizeof(x_min));
+  bytes += write(fd, &x_max, sizeof(x_max));
+  bytes += write(fd, &y_min, sizeof(y_min));
+  bytes += write(fd, &y_max, sizeof(y_max));
+  bytes += write(fd, &sample_count, sizeof(sample_count));
+
+  /****************
+   * WRITE POINTS *
+   ****************/
+  gettimeofday(&t1, NULL);
+  for (unsigned long long i = 0; i < sample_count; ++i, ++sorter) {
     pdal_point p = *sorter;
-
-    curve_to_xy(p.key, &x, &y);
-    x = (x * x_range) + x_min;
-    y = (y * y_range) + y_min;
-    fprintf(stdout, "%016lx \t%.10lf \t%.10lf \t%.10lf \t%.10lf\n", p.key, p.x, x, p.y, y);
+    bytes += write(fd, &p, sizeof(p));
   }
+  gettimeofday(&t2, NULL);
+  fprintf(stdout,
+          ANSI_COLOR_RED "index: %ld μs, %lld bytes written" ANSI_COLOR_RESET "\n",
+          USECONDS, bytes);
 
+  /***********
+   * CLEANUP *
+   ***********/
+  free(projection_string);
+  close(fd);
 }

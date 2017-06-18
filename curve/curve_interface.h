@@ -30,46 +30,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
+#ifndef __CURVE_INTERFACE_H__
+#define __CURVE_INTERFACE_H__
 
-#define ONES ((uint32_t)(-1))
-#define DOUBLE_TO_BITS(x) (uint32_t)(ONES*x)
-#define BITS_TO_DOUBLE(b) (((double)b)/ONES)
+#include "curve.h"
 
+extern to_curve xy_to_curve;
+extern from_curve curve_to_xy;
+extern name_of_curve curve_name;
+extern version_of_curve curve_version;
+extern void load_curve(const char * sofilename);
 
-uint64_t xy_to_curve(double x, double y) {
-  uint32_t x_bits = DOUBLE_TO_BITS(x);
-  uint32_t y_bits = DOUBLE_TO_BITS(y);
-  uint64_t d = 0;
-
-  for (int bit = 31; bit >= 0; --bit) {
-    uint64_t rx = (x_bits & (1<<bit)) == 0? 0:1;
-    uint64_t ry = (y_bits & (1<<bit)) == 0? 0:1;
-    d |= (rx<<(2*bit+1));
-    d |= (ry<<(2*bit+0));
-  }
-
-  return d;
-}
-
-void curve_to_xy(uint64_t d, double * x, double * y) {
-  uint32_t x_bits = 0, y_bits = 0;
-
-  for (int bit = 31; bit >= 0; --bit) {
-    uint32_t rx = (d & (((uint64_t)1)<<(bit*2+1))) == 0? 0:1;
-    uint32_t ry = (d & (((uint64_t)1)<<(bit*2+0))) == 0? 0:1;
-    x_bits |= (rx<<bit);
-    y_bits |= (ry<<bit);
-  }
-
-  *x = BITS_TO_DOUBLE(x_bits);
-  *y = BITS_TO_DOUBLE(y_bits);
-}
-
-char * curve_name() {
-  return "morton";
-}
-
-uint32_t curve_version() {
-  return 0;
-}
+#endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2014 and 2016-2017, James McClain and Mark Pugner
+ * Copyright (c) 2017, James McClain and Mark Pugner
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,7 +30,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "curve.h"
+#include <stdint.h>
 
 #define ONES ((uint32_t)(-1))
 #define DOUBLE_TO_BITS(x) (uint32_t)(ONES*x)
@@ -49,4 +49,12 @@ void curve_to_xy(uint64_t d, double * x, double * y) {
   y_bits = ONES & d;
   *x = BITS_TO_DOUBLE(x_bits);
   *y = BITS_TO_DOUBLE(y_bits);
+}
+
+char * curve_name() {
+  return "trivial";
+}
+
+uint32_t curve_version() {
+  return 0;
 }

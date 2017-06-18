@@ -30,46 +30,49 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <dlfcn.h>
 
-#define ONES ((uint32_t)(-1))
-#define DOUBLE_TO_BITS(x) (uint32_t)(ONES*x)
-#define BITS_TO_DOUBLE(b) (((double)b)/ONES)
+#include "curve_interface.h"
 
 
-uint64_t xy_to_curve(double x, double y) {
-  uint32_t x_bits = DOUBLE_TO_BITS(x);
-  uint32_t y_bits = DOUBLE_TO_BITS(y);
-  uint64_t d = 0;
+to_curve xy_to_curve = NULL;
+from_curve curve_to_xy = NULL;
+name_of_curve curve_name = NULL;
+version_of_curve curve_version = NULL;
 
-  for (int bit = 31; bit >= 0; --bit) {
-    uint64_t rx = (x_bits & (1<<bit)) == 0? 0:1;
-    uint64_t ry = (y_bits & (1<<bit)) == 0? 0:1;
-    d |= (rx<<(2*bit+1));
-    d |= (ry<<(2*bit+0));
+void load_curve(const char * sofilename) {
+  char * message;
+  void * handle;
+
+  handle = dlopen(sofilename,  RTLD_NOW); // NULL implies failure
+  if (handle == NULL) {
+    fprintf(stderr, "%s\n", dlerror());
+    exit(-1);
   }
 
-  return d;
-}
-
-void curve_to_xy(uint64_t d, double * x, double * y) {
-  uint32_t x_bits = 0, y_bits = 0;
-
-  for (int bit = 31; bit >= 0; --bit) {
-    uint32_t rx = (d & (((uint64_t)1)<<(bit*2+1))) == 0? 0:1;
-    uint32_t ry = (d & (((uint64_t)1)<<(bit*2+0))) == 0? 0:1;
-    x_bits |= (rx<<bit);
-    y_bits |= (ry<<bit);
+  xy_to_curve = (to_curve)dlsym(handle, "xy_to_curve"); // NULL does not imply failure
+  if ((message = dlerror()) != NULL) {
+    fprintf(stderr, "%s\n", message);
+    exit(-1);
   }
 
-  *x = BITS_TO_DOUBLE(x_bits);
-  *y = BITS_TO_DOUBLE(y_bits);
-}
+  curve_to_xy = (from_curve)dlsym(handle, "curve_to_xy"); // NULL does not imply failure
+  if ((message = dlerror()) != NULL) {
+    fprintf(stderr, "%s\n", message);
+    exit(-1);
+  }
 
-char * curve_name() {
-  return "morton";
-}
+  curve_name = (name_of_curve)dlsym(handle, "curve_name"); //NULL does not imply failure
+  if ((message = dlerror()) != NULL) {
+    fprintf(stderr, "%s\n", message);
+    exit(-1);
+  }
 
-uint32_t curve_version() {
-  return 0;
+  curve_version = (version_of_curve)dlsym(handle, "curve_version"); //NULL does not imply failure
+  if ((message = dlerror()) != NULL) {
+    fprintf(stderr, "%s\n", message);
+    exit(-1);
+  }
 }

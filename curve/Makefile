@@ -1,4 +1,7 @@
-all: libHilbert2D.so.1.0.1 libMorton2D.so.1.0.1 libTrivial2D.so.1.0.1
+all: curve_interface.o libHilbert2D.so.1.0.1 libMorton2D.so.1.0.1 libTrivial2D.so.1.0.1
+
+%.o: %.c %.h Makefile
+	$(CC) $(CFLAGS) -fpic $< -c -o $@
 
 %.o: %.c Makefile
 	$(CC) $(CFLAGS) -fpic $< -c -o $@

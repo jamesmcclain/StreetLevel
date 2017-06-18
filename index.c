@@ -36,49 +36,22 @@
 #include <assert.h>
 #include <string.h>
 #include <time.h>
-
 #include <sys/time.h>
 
-#include "opencl.h"
+#include "curve/curve_interface.h"
 #include "pdal.h"
 
 
 int main(int argc, const char ** argv)
 {
-  char * projection;
-  double transform[6];
-  int devices;
-  opencl_struct info[4];
-
-  if (argc < 3)
+  if (argc < 4)
     {
-      fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
+      fprintf(stderr, "Usage: %s <so_filename> <index_filename> [<las_filename>]+\n", argv[0]);
       exit(-1);
     }
 
-  /**************
-   * INITIALIZE *
-   **************/
-  opencl_init(4, &devices, info);
-
-  /***********
-   * COMPUTE *
-   ***********/
-  pdal_load(argv[1], (argv + 2), argc - 2, 1<<12, 1<<12, transform, &projection);
-
-  /**********
-   * OUTPUT *
-   **********/
-  fprintf(stderr, "wkt = %s\n", projection);
-  fprintf(stderr, "transform = %lf %lf %lf %lf %lf %lf\n",
-          transform[0], transform[1], transform[2],
-          transform[3], transform[4], transform[5]);
-
-  /***********
-   * CLEANUP *
-   ***********/
-  opencl_finit(devices, info);
-  free(projection);
+  load_curve(argv[1]);
+  pdal_load(argv[2], (argv + 3), argc - 3);
 
   return 0;
 }
