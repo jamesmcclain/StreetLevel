@@ -39,6 +39,7 @@
 
 #include <sys/time.h>
 
+#include "curve/curve_interface.h"
 #include "opencl.h"
 #include "pdal.h"
 
@@ -52,7 +53,7 @@ int main(int argc, const char ** argv)
 
   if (argc < 3)
     {
-      fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
+      fprintf(stderr, "Usage: %s <so_filename> [<las_filename>]+", argv[0]);
       exit(-1);
     }
 
@@ -60,11 +61,13 @@ int main(int argc, const char ** argv)
    * INITIALIZE *
    **************/
   opencl_init(4, &devices, info);
+  load_curve(argv[1]);
+  fprintf(stdout, "curve information: %s %d\n", curve_name(), curve_version());
 
   /***********
    * COMPUTE *
    ***********/
-  pdal_load(argv[1], (argv + 2), argc - 2, 1<<12, 1<<12, transform, &projection);
+  pdal_load((argv + 2), argc - 2, 1<<12, 1<<12, transform, &projection);
 
   /**********
    * OUTPUT *

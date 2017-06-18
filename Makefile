@@ -19,7 +19,7 @@ all: dem_test sort_test viewshed_test libs
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -o $@
 
-dem_test: dem_test.o pdal.o opencl.o
+dem_test: dem_test.o opencl.o pdal.o curve/curve_interface.o
 	$(CC) -rdynamic -fopenmp $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -lm -o $@
 
 sort_test: sort_test.o opencl.o bitonic.o partition.o
