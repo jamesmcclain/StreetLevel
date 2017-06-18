@@ -52,6 +52,17 @@
 
 using namespace pdal;
 
+#define USECONDS ((t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec))
+
+// Reference: https://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
+#define ANSI_COLOR_RED     "\x1b[31;1m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
 // Sorting
 pdal_point min_point;
 pdal_point max_point;
@@ -82,7 +93,7 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
   char * projection_string = NULL;
   unsigned long long sample_count;
 
-  struct timeval t1, t2, t3, t4, t5, t6, t7, t8;
+  struct timeval t1, t2;
 
   /***********************************************************************
    * STXXL.  Reference: http://stxxl.org/tags/master/install_config.html *
@@ -124,12 +135,14 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
   x_range = x_max - x_min;
   y_range = y_max - y_min;
   gettimeofday(&t2, NULL);
-  fprintf(stdout, "bounding box: %ld μs\n", (t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec));
+  fprintf(stdout,
+          ANSI_COLOR_RED "bounding box: %ld μs" ANSI_COLOR_RESET "\n",
+          USECONDS);
 
   /***************
    * READ POINTS *
    ***************/
-  gettimeofday(&t3, NULL);
+  gettimeofday(&t1, NULL);
   for (int i = 0; i < filenamec; ++i) {
     DimTypeList dims;
     LasHeader header;
@@ -162,18 +175,21 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
       sorter.push(p);
     }
   }
-  gettimeofday(&t4, NULL);
+  gettimeofday(&t2, NULL);
   sample_count = sorter.size();
-  fprintf(stdout, "input: %lld samples, %ld μs\n",
-          sample_count, (t4.tv_sec - t2.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));
+  fprintf(stdout,
+          ANSI_COLOR_RED "input: %ld μs, %lld samples" ANSI_COLOR_RESET "\n",
+          USECONDS, sample_count);
 
   /********
    * SORT *
    ********/
-  gettimeofday(&t5, NULL);
+  gettimeofday(&t1, NULL);
   sorter.sort();
-  gettimeofday(&t6, NULL);
-  fprintf(stdout, "sort: %ld μs\n", (t6.tv_sec - t5.tv_sec) * 1000000 + (t6.tv_usec - t5.tv_usec));
+  gettimeofday(&t2, NULL);
+  fprintf(stdout,
+          ANSI_COLOR_RED "sort: %ld μs" ANSI_COLOR_RESET "\n",
+          USECONDS);
 
   /****************
    * WRITE HEADER *
@@ -199,14 +215,15 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
   /****************
    * WRITE POINTS *
    ****************/
-  gettimeofday(&t7, NULL);
+  gettimeofday(&t1, NULL);
   for (unsigned long long i = 0; i < sample_count; ++i, ++sorter) {
     pdal_point p = *sorter;
     bytes += write(fd, &p, sizeof(p));
   }
-  gettimeofday(&t8, NULL);
-  fprintf(stdout, "index: %lld bytes written, %ld μs\n",
-          bytes, (t8.tv_sec - t7.tv_sec) * 1000000 + (t8.tv_usec - t7.tv_usec));
+  gettimeofday(&t2, NULL);
+  fprintf(stdout,
+          ANSI_COLOR_RED "index: %ld μs, %lld bytes written" ANSI_COLOR_RESET "\n",
+          USECONDS, bytes);
 
   /***********
    * CLEANUP *
