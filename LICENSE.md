@@ -1,5 +1,9 @@
-Copyright (c) 2010-2014 and 2016-2017, James McClain and Mark Pugner
-All rights reserved.
+Original BSD License
+====================
+
+_Copyright © 2010-2014 and 2016-2017, James McClain and Mark Pugner_
+
+_All rights reserved._
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
