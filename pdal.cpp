@@ -73,7 +73,6 @@ typedef stxxl::sorter<pdal_point, key_comparator> point_sorter;
 void pdal_load(const char ** filenamev,
                int filenamec,
                uint32_t cols, uint32_t rows,
-               double * transform,
                char ** projection) {
   double x_min = std::numeric_limits<double>::max(), y_min = std::numeric_limits<double>::max();
   double x_max = std::numeric_limits<double>::min(), y_max = std::numeric_limits<double>::min();
@@ -161,13 +160,6 @@ void pdal_load(const char ** filenamev,
   }
   gettimeofday(&t4, NULL);
   fprintf(stdout, "input: %ld μs\n", (t4.tv_sec - t2.tv_sec) * 1000000 + (t4.tv_usec - t3.tv_usec));
-
-  transform[0] = x_min; // top-left x
-  transform[1] = x_range / cols; // west-east pixel resolution
-  transform[2] = 0; // zero
-  transform[3] = y_min; // top-left y
-  transform[4] = 0; // zero
-  transform[5] = y_range / rows; // north-south pixel resolution
 
   fprintf(stdout, "x: %.10lf \t%.10lf\n", x_min, x_max);
   fprintf(stdout, "y: %.10lf \t%.10lf\n", y_min, y_max);

@@ -36,20 +36,15 @@
 #include <assert.h>
 #include <string.h>
 #include <time.h>
-
 #include <sys/time.h>
 
 #include "curve/curve_interface.h"
-#include "opencl.h"
 #include "pdal.h"
 
 
 int main(int argc, const char ** argv)
 {
   char * projection;
-  double transform[6];
-  int devices;
-  opencl_struct info[4];
 
   if (argc < 3)
     {
@@ -60,27 +55,22 @@ int main(int argc, const char ** argv)
   /**************
    * INITIALIZE *
    **************/
-  opencl_init(4, &devices, info);
   load_curve(argv[1]);
   fprintf(stdout, "curve information: %s %d\n", curve_name(), curve_version());
 
   /***********
    * COMPUTE *
    ***********/
-  pdal_load((argv + 2), argc - 2, 1<<12, 1<<12, transform, &projection);
+  pdal_load((argv + 2), argc - 2, 1<<12, 1<<12, &projection);
 
   /**********
    * OUTPUT *
    **********/
   fprintf(stderr, "wkt = %s\n", projection);
-  fprintf(stderr, "transform = %lf %lf %lf %lf %lf %lf\n",
-          transform[0], transform[1], transform[2],
-          transform[3], transform[4], transform[5]);
 
   /***********
    * CLEANUP *
    ***********/
-  opencl_finit(devices, info);
   free(projection);
 
   return 0;
