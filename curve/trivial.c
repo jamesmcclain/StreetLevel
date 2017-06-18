@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2014 and 2016-2017, James McClain and Mark Pugner
+ * Copyright (c) 2017, James McClain and Mark Pugner
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
