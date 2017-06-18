@@ -43,8 +43,8 @@
 #include <pdal/StageFactory.hpp>
 #include <stxxl/sorter>
 
+#include "curve/curve.h"
 #include "pdal.h"
-
 
 using namespace pdal;
 
@@ -70,9 +70,11 @@ typedef struct key_comparator {
 
 typedef stxxl::sorter<pdal_point, key_comparator> point_sorter;
 
-// Indexing
-typedef uint64_t(*to_curve)(double,double);
-typedef void(*from_curve)(uint64_t,double *, double *);
+// Curve-related
+to_curve xy_to_curve;
+from_curve curve_to_xy;
+name_of_curve curve_name;
+version_of_curve curve_version;
 
 
 void pdal_load(const char * sofilename,
@@ -80,12 +82,9 @@ void pdal_load(const char * sofilename,
                int filenamec,
                uint32_t cols, uint32_t rows,
                double * transform,
-               char ** projection)
-{
+               char ** projection) {
   void * handle;
   char * message;
-  to_curve xy_to_curve;
-  from_curve curve_to_xy;
   double x_min = std::numeric_limits<double>::max(), y_min = std::numeric_limits<double>::max();
   double x_max = std::numeric_limits<double>::min(), y_max = std::numeric_limits<double>::min();
   double x_range, y_range;
@@ -150,6 +149,18 @@ void pdal_load(const char * sofilename,
   }
 
   curve_to_xy = (from_curve)dlsym(handle, "curve_to_xy"); // NULL does not imply failure
+  if ((message = dlerror()) != NULL) {
+    fprintf(stderr, "%s\n", message);
+    exit(-1);
+  }
+
+  curve_name = (name_of_curve)dlsym(handle, "curve_name"); //NULL does not imply failure
+  if ((message = dlerror()) != NULL) {
+    fprintf(stderr, "%s\n", message);
+    exit(-1);
+  }
+
+  curve_version = (version_of_curve)dlsym(handle, "curve_version"); //NULL does not imply failure
   if ((message = dlerror()) != NULL) {
     fprintf(stderr, "%s\n", message);
     exit(-1);

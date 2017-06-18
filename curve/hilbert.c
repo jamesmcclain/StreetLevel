@@ -2,12 +2,12 @@
  * Source: https://en.wikipedia.org/wiki/Hilbert_curve
  */
 
-#include "curve.h"
-
+#include <stdint.h>
 
 #define ONES ((uint32_t)(-1))
 #define DOUBLE_TO_BITS(x) (uint32_t)(ONES*x)
 #define BITS_TO_DOUBLE(b) (((double)b)/ONES)
+
 
 void rotate(int bit, uint32_t * x_bits, uint32_t * y_bits, uint64_t rx, uint64_t ry) {
   if (ry == 0) {
@@ -54,4 +54,12 @@ void curve_to_xy(uint64_t d, double * x, double * y) {
 
   *x = BITS_TO_DOUBLE(x_bits);
   *y = BITS_TO_DOUBLE(y_bits);
+}
+
+char * curve_name() {
+  return "hilbert";
+}
+
+uint32_t curve_version() {
+  return 0;
 }

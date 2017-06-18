@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 
-uint64_t xy_to_curve(double x, double y);
-void curve_to_xy(uint64_t d, double * x, double * y);
+typedef uint64_t (* to_curve)(double,double);
+typedef void (* from_curve)(uint64_t,double *, double *);
+typedef char * (* name_of_curve)();
+typedef uint32_t (* version_of_curve)();
 
 #endif

@@ -30,7 +30,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "curve.h"
+#include <stdint.h>
 
 #define ONES ((uint32_t)(-1))
 #define DOUBLE_TO_BITS(x) (uint32_t)(ONES*x)
@@ -64,4 +64,12 @@ void curve_to_xy(uint64_t d, double * x, double * y) {
 
   *x = BITS_TO_DOUBLE(x_bits);
   *y = BITS_TO_DOUBLE(y_bits);
+}
+
+char * curve_name() {
+  return "morton";
+}
+
+uint32_t curve_version() {
+  return 0;
 }
