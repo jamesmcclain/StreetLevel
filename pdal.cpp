@@ -70,9 +70,7 @@ typedef struct key_comparator {
 typedef stxxl::sorter<pdal_point, key_comparator> point_sorter;
 
 
-void pdal_load(const char ** filenamev,
-               int filenamec,
-               uint32_t cols, uint32_t rows) {
+void pdal_load(const char ** filenamev, int filenamec) {
   double x_min = std::numeric_limits<double>::max(), y_min = std::numeric_limits<double>::max();
   double x_max = std::numeric_limits<double>::min(), y_max = std::numeric_limits<double>::min();
   double x_range, y_range;

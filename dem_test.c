@@ -51,8 +51,7 @@ int main(int argc, const char ** argv)
     }
 
   load_curve(argv[1]);
-  fprintf(stdout, "curve information: %s %ld %d\n", curve_name(), strlen(curve_name()), curve_version());
-  pdal_load((argv + 2), argc - 2, 1<<12, 1<<12);
+  pdal_load((argv + 2), argc - 2);
 
   return 0;
 }
