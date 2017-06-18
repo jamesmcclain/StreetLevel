@@ -44,34 +44,15 @@
 
 int main(int argc, const char ** argv)
 {
-  char * projection;
-
   if (argc < 3)
     {
       fprintf(stderr, "Usage: %s <so_filename> [<las_filename>]+", argv[0]);
       exit(-1);
     }
 
-  /**************
-   * INITIALIZE *
-   **************/
   load_curve(argv[1]);
-  fprintf(stdout, "curve information: %s %d\n", curve_name(), curve_version());
-
-  /***********
-   * COMPUTE *
-   ***********/
-  pdal_load((argv + 2), argc - 2, 1<<12, 1<<12, &projection);
-
-  /**********
-   * OUTPUT *
-   **********/
-  fprintf(stderr, "wkt = %s\n", projection);
-
-  /***********
-   * CLEANUP *
-   ***********/
-  free(projection);
+  fprintf(stdout, "curve information: %s %ld %d\n", curve_name(), strlen(curve_name()), curve_version());
+  pdal_load((argv + 2), argc - 2, 1<<12, 1<<12);
 
   return 0;
 }

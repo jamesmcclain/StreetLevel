@@ -72,11 +72,11 @@ typedef stxxl::sorter<pdal_point, key_comparator> point_sorter;
 
 void pdal_load(const char ** filenamev,
                int filenamec,
-               uint32_t cols, uint32_t rows,
-               char ** projection) {
+               uint32_t cols, uint32_t rows) {
   double x_min = std::numeric_limits<double>::max(), y_min = std::numeric_limits<double>::max();
   double x_max = std::numeric_limits<double>::min(), y_max = std::numeric_limits<double>::min();
   double x_range, y_range;
+  char * projection = NULL;
 
   struct timeval t1, t2, t3, t4, t5, t6;
 
@@ -145,8 +145,8 @@ void pdal_load(const char ** filenamev,
     if (i == 0) {
       std::string proj = header.srs().getWKT().c_str();
       int n = proj.length();
-      *projection = (char *)calloc(n+1, sizeof(char));
-      strncpy(*projection, proj.c_str(), n);
+      projection = (char *)calloc(n+1, sizeof(char));
+      strncpy(projection, proj.c_str(), n);
     }
 
     for (uint j = 0; j < header.pointCount(); ++j) {
@@ -186,4 +186,5 @@ void pdal_load(const char ** filenamev,
     fprintf(stdout, "%016lx \t%.10lf \t%.10lf \t%.10lf \t%.10lf\n", p.key, p.x, x, p.y, y);
   }
 
+  free(projection);
 }

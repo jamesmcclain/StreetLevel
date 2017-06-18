@@ -48,8 +48,7 @@ extern "C" {
 
   void pdal_load(const char ** filenamev,
                  int filenamec,
-                 uint32_t cols, uint32_t rows,
-                 char ** projection);
+                 uint32_t cols, uint32_t rows);
 
 #ifdef __cplusplus
 }
