@@ -45,6 +45,12 @@ extern "C" {
                                   double x_min, double x_max, double y_min, double y_max,
                                   unsigned long long sample_count);
 
+  const void * read_header(const void * data,
+                           const char * name_string, int version,
+                           char ** projection_string,
+                           double * x_min, double * x_max, double * y_min, double * y_max,
+                           unsigned long long * sample_count);
+
 #ifdef __cplusplus
 }
 #endif

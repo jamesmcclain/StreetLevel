@@ -11,17 +11,15 @@ CFLAGS += -std=c11 $(GDAL_CFLAGS)
 CXXFLAGS += -std=c++11
 
 
-.PHONY: lib idx
+all: point_index curve/libHilbert2D.so.1.0.1 curve/libMorton2D.so.1.0.1 curve/libTrivial2D.so.1.0.1
 
-all: point_index lib idx
-
-lib:
+curve/curve_interface.o curve/libHilbert2D.so.1.0.1 curve/libMorton2D.so.1.0.1 curve/libTrivial2D.so.1.0.1: curve/*.[ch]
 	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C curve
 
-idx:
+index/index.o: index/index.[ch]
 	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C index
 
-point_index: point_index.o opencl.o pdal.o curve/curve_interface.o index/write.o
+point_index: point_index.o opencl.o pdal.o curve/curve_interface.o index/index.o
 	$(CC) -rdynamic -fopenmp $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -lm -o $@
 
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o

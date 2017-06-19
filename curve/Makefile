@@ -1,5 +1,8 @@
 all: curve_interface.o libHilbert2D.so.1.0.1 libMorton2D.so.1.0.1 libTrivial2D.so.1.0.1
 
+curve_interface.o: curve_interface.[ch]
+	$(CC) $(CFLAGS) $< -c -o $@
+
 %.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) -fpic $< -c -o $@
 
@@ -18,7 +21,7 @@ libTrivial2D.so.1.0.1: trivial.o
 clean:
 	rm -f *.o
 
-cleaner:
+cleaner: clean
 	rm -f libHilbert2D.so.1.0.1 libMorton2D.so.1.0.1 libTrivial2D.so.1.0.1
 
 cleanest: cleaner

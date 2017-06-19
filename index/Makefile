@@ -1,3 +1,5 @@
+all: index.o
+
 %.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
 
