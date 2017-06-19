@@ -34,11 +34,11 @@
 #include <cstdint>
 #include <cstring>
 
+#include <unistd.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <errno.h>
 
 #include <pdal/Filter.hpp>
 #include <pdal/io/LasHeader.hpp>
@@ -47,8 +47,9 @@
 #include <pdal/StageFactory.hpp>
 #include <stxxl/sorter>
 
-#include "curve/curve_interface.h"
 #include "pdal.h"
+#include "curve/curve_interface.h"
+#include "index/index.h"
 
 using namespace pdal;
 
@@ -56,11 +57,8 @@ using namespace pdal;
 
 // Reference: https://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
 #define ANSI_COLOR_RED     "\x1b[31;1m"
-#define ANSI_COLOR_GREEN   "\x1b[32m"
-#define ANSI_COLOR_YELLOW  "\x1b[33m"
-#define ANSI_COLOR_BLUE    "\x1b[34m"
-#define ANSI_COLOR_MAGENTA "\x1b[35m"
-#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_YELLOW  "\x1b[33;1m"
+#define ANSI_COLOR_CYAN    "\x1b[36;1m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
 // Sorting
@@ -99,7 +97,9 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
    * STXXL.  Reference: http://stxxl.org/tags/master/install_config.html *
    ***********************************************************************/
   stxxl::config * cfg = stxxl::config::get_instance();
-  cfg->add_disk( stxxl::disk_config("disk=/tmp/StreetLevel.stxxl, 0, syscall unlink"));
+  char disk_string[0xff];
+  sprintf(disk_string, "disk=/tmp/%d, 4 GiB, syscall unlink", getpid());
+  cfg->add_disk( stxxl::disk_config(disk_string));
   min_point.key = 0;
   max_point.key = 0xffffffffffffffff;
   point_sorter sorter(key_comparator(), (1<<30));
@@ -175,10 +175,10 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
       sorter.push(p);
     }
   }
-  gettimeofday(&t2, NULL);
   sample_count = sorter.size();
+  gettimeofday(&t2, NULL);
   fprintf(stdout,
-          ANSI_COLOR_RED "input: %ld μs, %lld samples" ANSI_COLOR_RESET "\n",
+          ANSI_COLOR_RED "read: %ld μs, %lld samples" ANSI_COLOR_RESET "\n",
           USECONDS, sample_count);
 
   /********
@@ -191,32 +191,19 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
           ANSI_COLOR_RED "sort: %ld μs" ANSI_COLOR_RESET "\n",
           USECONDS);
 
-  /****************
-   * WRITE HEADER *
-   ****************/
+  /**************
+   * WRITE DATA *
+   **************/
   unsigned long long bytes = 0;
-  char * name_string = curve_name();
-  int name_length = strlen(name_string) + 1;
-  int version = curve_version();
-  int projection_length = strlen(projection_string) + 1;
   int fd = open(ifilename, O_CREAT|O_WRONLY|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 
-  bytes += write(fd, &name_length, sizeof(name_length));
-  bytes += write(fd, name_string, name_length);
-  bytes += write(fd, &version, sizeof(version));
-  bytes += write(fd, &projection_length, sizeof(projection_length));
-  bytes += write(fd, projection_string, projection_length);
-  bytes += write(fd, &x_min, sizeof(x_min));
-  bytes += write(fd, &x_max, sizeof(x_max));
-  bytes += write(fd, &y_min, sizeof(y_min));
-  bytes += write(fd, &y_max, sizeof(y_max));
-  bytes += write(fd, &sample_count, sizeof(sample_count));
-
-  /****************
-   * WRITE POINTS *
-   ****************/
   gettimeofday(&t1, NULL);
-  for (unsigned long long i = 0; i < sample_count; ++i, ++sorter) {
+  bytes = write_header(fd,
+                       curve_name(), curve_version(),
+                       projection_string,
+                       x_min, x_max, y_min, y_max,
+                       sample_count);
+  for (uint64_t i = 0; i < sample_count; ++i, ++sorter) {
     pdal_point p = *sorter;
     bytes += write(fd, &p, sizeof(p));
   }

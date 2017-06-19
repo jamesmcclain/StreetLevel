@@ -4,6 +4,6 @@ cachegrind.out.*
 core
 *.o
 viewshed_test
-index
+point_index
 sort_test
 curve/*.so.*

@@ -11,12 +11,15 @@ CFLAGS += -std=c11 $(GDAL_CFLAGS)
 CXXFLAGS += -std=c++11
 
 
-all: index libs
+all: point_index curve/libHilbert2D.so.1.0.1 curve/libMorton2D.so.1.0.1 curve/libTrivial2D.so.1.0.1
 
-.PHONY libs:
+curve/curve_interface.o curve/libHilbert2D.so.1.0.1 curve/libMorton2D.so.1.0.1 curve/libTrivial2D.so.1.0.1: curve/*.[ch]
 	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C curve
 
-index: index.o opencl.o pdal.o curve/curve_interface.o
+index/index.o: index/index.[ch]
+	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C index
+
+point_index: point_index.o opencl.o pdal.o curve/curve_interface.o index/index.o
 	$(CC) -rdynamic -fopenmp $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -lm -o $@
 
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
@@ -55,12 +58,15 @@ cachegrind: sort_test viewshed_test
 clean:
 	rm -f *.o
 	make -C curve clean
+	make -C index clean
 
 cleaner: clean
-	rm -f index viewshed_test sort_test
+	rm -f point_index viewshed_test sort_test
 	rm -f stxxl.errlog stxxl.log
 	make -C curve cleaner
+	make -C index cleaner
 
 cleanest: cleaner
 	rm -f cachegrind.out.*
 	make -C curve cleanest
+	make -C index cleanest
