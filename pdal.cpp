@@ -34,11 +34,11 @@
 #include <cstdint>
 #include <cstring>
 
+#include <unistd.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <errno.h>
 
 #include <pdal/Filter.hpp>
 #include <pdal/io/LasHeader.hpp>
@@ -97,7 +97,9 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
    * STXXL.  Reference: http://stxxl.org/tags/master/install_config.html *
    ***********************************************************************/
   stxxl::config * cfg = stxxl::config::get_instance();
-  cfg->add_disk( stxxl::disk_config("disk=/tmp/StreetLevel.stxxl, 0, syscall unlink"));
+  char disk_string[0xff];
+  sprintf(disk_string, "disk=/tmp/%d, 4 GiB, syscall unlink", getpid());
+  cfg->add_disk( stxxl::disk_config(disk_string));
   min_point.key = 0;
   max_point.key = 0xffffffffffffffff;
   point_sorter sorter(key_comparator(), (1<<30));
