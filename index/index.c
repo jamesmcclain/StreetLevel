@@ -32,6 +32,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "index.h"
@@ -119,4 +123,19 @@ const void * read_header(const void * data,
   data += temp;
 
   return data;
+}
+
+void * map_index(const char * filename, struct stat * stat) {
+  int fd = open(filename, O_RDONLY);
+  void  * data;
+
+  fstat(fd, stat);
+  data = mmap(NULL, stat->st_size, PROT_READ, MAP_SHARED, fd, 0);
+  close(fd);
+
+  return data;
+}
+
+void unamp_index(void * data, const struct stat * stat) {
+  munmap(data, stat->st_size);
 }
