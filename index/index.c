@@ -29,6 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -39,6 +40,9 @@
 #include <unistd.h>
 
 #include "index.h"
+
+#define ENSURE(p, m) { if (!(p)) { fprintf(stderr, "Error: \"%s\" at %s:%d\n", m, __FILE__, __LINE__); exit(-1); } }
+
 
 unsigned long long write_header(int fd,
                                 const char * name_string, int version,
@@ -82,23 +86,23 @@ void * read_header(void * data,
   // First half of magic number
   magic = *(uint64_t *)data;
   data += sizeof(magic);
-  if (magic != MAGIC1) exit(-1);
+  ENSURE(magic == MAGIC1, "MAGIC1");
 
   // Second half of magic number
   magic = *(uint64_t *)data;
   data += sizeof(magic);
-  if (magic != MAGIC2) exit(-1);
+  ENSURE(magic == MAGIC2, "MAGIC2");
 
   // Curve name
   temp = *(int *)data;
   data += sizeof(temp);
-  if (strncmp(name_string, data, temp-1)) exit(-1);
+  ENSURE(strncmp(name_string, data, temp-1) == 0, "curve name");
   data += temp;
 
   // Curve version
   temp = *(int *)data;
   data += sizeof(temp);
-  if (temp != version) exit(-1);
+  ENSURE(temp == version, "curve version");
 
   // Projection
   temp = *(int *)data;
