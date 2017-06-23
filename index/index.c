@@ -119,6 +119,7 @@ void * read_header(void * data,
 
   // Sample count
   temp = *(int *)data;
+  data += sizeof(temp);
   *sample_count = *(unsigned long long *)data;
   data += temp;
 
