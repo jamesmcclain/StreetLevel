@@ -47,6 +47,7 @@
 #include <pdal/StageFactory.hpp>
 #include <stxxl/sorter>
 
+#include "ansi.h"
 #include "pdal.h"
 #include "curve/curve_interface.h"
 #include "index/index.h"
@@ -54,12 +55,6 @@
 using namespace pdal;
 
 #define USECONDS ((t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec))
-
-// Reference: https://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
-#define ANSI_COLOR_RED     "\x1b[31;1m"
-#define ANSI_COLOR_YELLOW  "\x1b[33;1m"
-#define ANSI_COLOR_CYAN    "\x1b[36;1m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
 
 // Sorting
 pdal_point min_point;
@@ -136,7 +131,9 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
   y_range = y_max - y_min;
   gettimeofday(&t2, NULL);
   fprintf(stdout,
-          ANSI_COLOR_RED "bounding box: %ld μs" ANSI_COLOR_RESET "\n",
+          ANSI_COLOR_CYAN "bounding box: "
+          ANSI_COLOR_MAGENTA "%ld μs"
+          ANSI_COLOR_RESET "\n",
           USECONDS);
 
   /***************
@@ -178,7 +175,9 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
   sample_count = sorter.size();
   gettimeofday(&t2, NULL);
   fprintf(stdout,
-          ANSI_COLOR_RED "read: %ld μs, %lld samples" ANSI_COLOR_RESET "\n",
+          ANSI_COLOR_CYAN "read: "
+          ANSI_COLOR_MAGENTA "%ld μs, %lld samples"
+          ANSI_COLOR_RESET "\n",
           USECONDS, sample_count);
 
   /********
@@ -188,7 +187,9 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
   sorter.sort();
   gettimeofday(&t2, NULL);
   fprintf(stdout,
-          ANSI_COLOR_RED "sort: %ld μs" ANSI_COLOR_RESET "\n",
+          ANSI_COLOR_CYAN "sort: "
+          ANSI_COLOR_MAGENTA "%ld μs"
+          ANSI_COLOR_RESET "\n",
           USECONDS);
 
   /**************
@@ -209,7 +210,9 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
   }
   gettimeofday(&t2, NULL);
   fprintf(stdout,
-          ANSI_COLOR_RED "index: %ld μs, %lld bytes written" ANSI_COLOR_RESET "\n",
+          ANSI_COLOR_CYAN "index: "
+          ANSI_COLOR_MAGENTA "%ld μs, %lld bytes written"
+          ANSI_COLOR_RESET "\n",
           USECONDS, bytes);
 
   /***********

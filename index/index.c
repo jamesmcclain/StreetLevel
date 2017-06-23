@@ -29,6 +29,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -39,6 +40,9 @@
 #include <unistd.h>
 
 #include "index.h"
+
+#define ENSURE(p, m) { if (!(p)) { fprintf(stderr, "Error: \"%s\" at %s:%d\n", m, __FILE__, __LINE__); exit(-1); } }
+
 
 unsigned long long write_header(int fd,
                                 const char * name_string, int version,
@@ -70,11 +74,11 @@ unsigned long long write_header(int fd,
   return bytes;
 }
 
-const void * read_header(const void * data,
-                         const char * name_string, int version,
-                         char ** projection_string,
-                         double * x_min, double * x_max, double * y_min, double * y_max,
-                         unsigned long long * sample_count) {
+void * read_header(void * data,
+                   const char * name_string, int version,
+                   char ** projection_string,
+                   double * x_min, double * x_max, double * y_min, double * y_max,
+                   unsigned long long * sample_count) {
 
   uint64_t magic;
   int temp;
@@ -82,23 +86,23 @@ const void * read_header(const void * data,
   // First half of magic number
   magic = *(uint64_t *)data;
   data += sizeof(magic);
-  if (magic != MAGIC1) exit(-1);
+  ENSURE(magic == MAGIC1, "MAGIC1");
 
   // Second half of magic number
   magic = *(uint64_t *)data;
   data += sizeof(magic);
-  if (magic != MAGIC2) exit(-1);
+  ENSURE(magic == MAGIC2, "MAGIC2");
 
   // Curve name
   temp = *(int *)data;
   data += sizeof(temp);
-  if (!strncmp(name_string, data, temp-1)) exit(-1);
+  ENSURE(strncmp(name_string, data, temp-1) == 0, "curve name");
   data += temp;
 
   // Curve version
   temp = *(int *)data;
   data += sizeof(temp);
-  if (temp != version) exit(-1);
+  ENSURE(temp == version, "curve version");
 
   // Projection
   temp = *(int *)data;
@@ -119,6 +123,7 @@ const void * read_header(const void * data,
 
   // Sample count
   temp = *(int *)data;
+  data += sizeof(temp);
   *sample_count = *(unsigned long long *)data;
   data += temp;
 
@@ -136,6 +141,6 @@ void * map_index(const char * filename, struct stat * stat) {
   return data;
 }
 
-void unamp_index(void * data, const struct stat * stat) {
+void unmap_index(void * data, const struct stat * stat) {
   munmap(data, stat->st_size);
 }

@@ -32,24 +32,49 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
-#include <string.h>
-#include <time.h>
-#include <sys/time.h>
 
+#include "ansi.h"
 #include "curve/curve_interface.h"
-#include "pdal.h"
+#include "index/index.h"
 
 
 int main(int argc, const char ** argv)
 {
-  if (argc < 4) {
-    fprintf(stderr, "Usage: %s <so_filename> <index_filename> [<las_filename>]+\n", argv[0]);
+  void * data;
+  char * projection;
+  double x_min, x_max, y_min, y_max;
+  unsigned long long sample_count;
+  struct stat stat;
+
+  if (argc < 3) {
+    fprintf(stderr, "Usage: %s <so_filename> <index_filename>\n", argv[0]);
     exit(-1);
   }
 
   load_curve(argv[1]);
-  pdal_load(argv[2], (argv + 3), argc - 3);
+  data = map_index(argv[2], &stat);
 
-  return 0;
+  data = read_header(data,
+                     curve_name(), curve_version(),
+                     &projection,
+                     &x_min, &x_max, &y_min, &y_max,
+                     &sample_count);
+
+  fprintf(stdout,
+          ANSI_COLOR_CYAN "projection = "
+          ANSI_COLOR_MAGENTA "%s"
+          ANSI_COLOR_RESET "\n",
+          projection);
+  fprintf(stdout,
+          ANSI_COLOR_CYAN "bounding box = "
+          ANSI_COLOR_MAGENTA "%lf %lf %lf %lf"
+          ANSI_COLOR_RESET "\n",
+          x_min, x_max, y_min, y_max);
+  fprintf(stderr,
+          ANSI_COLOR_CYAN "sample count = "
+          ANSI_COLOR_MAGENTA "%lld"
+          ANSI_COLOR_RESET "\n",
+          sample_count);
+
+  unmap_index(data, &stat);
 }
