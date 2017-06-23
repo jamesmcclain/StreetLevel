@@ -70,11 +70,11 @@ unsigned long long write_header(int fd,
   return bytes;
 }
 
-const void * read_header(const void * data,
-                         const char * name_string, int version,
-                         char ** projection_string,
-                         double * x_min, double * x_max, double * y_min, double * y_max,
-                         unsigned long long * sample_count) {
+void * read_header(void * data,
+                   const char * name_string, int version,
+                   char ** projection_string,
+                   double * x_min, double * x_max, double * y_min, double * y_max,
+                   unsigned long long * sample_count) {
 
   uint64_t magic;
   int temp;
@@ -92,7 +92,7 @@ const void * read_header(const void * data,
   // Curve name
   temp = *(int *)data;
   data += sizeof(temp);
-  if (!strncmp(name_string, data, temp-1)) exit(-1);
+  if (strncmp(name_string, data, temp-1)) exit(-1);
   data += temp;
 
   // Curve version
@@ -136,6 +136,6 @@ void * map_index(const char * filename, struct stat * stat) {
   return data;
 }
 
-void unamp_index(void * data, const struct stat * stat) {
+void unmap_index(void * data, const struct stat * stat) {
   munmap(data, stat->st_size);
 }

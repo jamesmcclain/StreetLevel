@@ -3,7 +3,8 @@ stxxl.log
 cachegrind.out.*
 core
 *.o
-viewshed_test
 point_index
+dem
 sort_test
+viewshed_test
 curve/*.so.*

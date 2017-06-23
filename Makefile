@@ -11,13 +11,16 @@ CFLAGS += -std=c11 $(GDAL_CFLAGS)
 CXXFLAGS += -std=c++11
 
 
-all: point_index curve/libHilbert2D.so.1.0.1 curve/libMorton2D.so.1.0.1 curve/libTrivial2D.so.1.0.1
+all: point_index dem curve/libHilbert2D.so.1.0.1 curve/libMorton2D.so.1.0.1 curve/libTrivial2D.so.1.0.1
 
 curve/curve_interface.o curve/libHilbert2D.so.1.0.1 curve/libMorton2D.so.1.0.1 curve/libTrivial2D.so.1.0.1: curve/*.[ch]
 	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C curve
 
 index/index.o: index/index.[ch]
 	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C index
+
+dem: dem.o curve/curve_interface.o index/index.o
+	$(CC) $^ -ldl -o $@
 
 point_index: point_index.o opencl.o pdal.o curve/curve_interface.o index/index.o
 	$(CC) -rdynamic -fopenmp $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -lm -o $@
@@ -61,7 +64,7 @@ clean:
 	make -C index clean
 
 cleaner: clean
-	rm -f point_index viewshed_test sort_test
+	rm -f point_index dem viewshed_test sort_test
 	rm -f stxxl.errlog stxxl.log
 	make -C curve cleaner
 	make -C index cleaner

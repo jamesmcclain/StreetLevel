@@ -32,6 +32,10 @@
 #ifndef __INDEX_H__
 #define __INDEX_H__
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #define MAGIC1 (0x466c6f72656e6365)
 #define MAGIC2 (0x4e6f726d6e646965)
 
@@ -45,11 +49,15 @@ extern "C" {
                                   double x_min, double x_max, double y_min, double y_max,
                                   unsigned long long sample_count);
 
-  const void * read_header(const void * data,
-                           const char * name_string, int version,
-                           char ** projection_string,
-                           double * x_min, double * x_max, double * y_min, double * y_max,
-                           unsigned long long * sample_count);
+  void * read_header(void * data,
+                     const char * name_string, int version,
+                     char ** projection_string,
+                     double * x_min, double * x_max, double * y_min, double * y_max,
+                     unsigned long long * sample_count);
+
+  void * map_index(const char * filename, struct stat * stat);
+
+  void unmap_index(void * data, const struct stat * stat);
 
 #ifdef __cplusplus
 }
