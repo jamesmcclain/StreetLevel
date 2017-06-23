@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2014 and 2016-2017, James McClain and Mark Pugner
+ * Copyright (c) 2017, James McClain
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,8 +12,7 @@
  *    distribution.
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement: This product
- *    includes software developed by Dr. James W. McClain and Dr. Mark
- *    C. Pugner.
+ *    includes software developed by Dr. James W. McClain.
  * 4. Neither the names of the authors nor the names of the
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
@@ -30,26 +29,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <string.h>
-#include <time.h>
-#include <sys/time.h>
+#ifndef __ANSI_H__
+#define __ANSI_H__
 
-#include "curve/curve_interface.h"
-#include "pdal.h"
+/*
+ * Reference: https://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
+ * Reference: https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+ */
+#define ANSI_COLOR_RED     "\x1b[31;1m"
+#define ANSI_COLOR_YELLOW  "\x1b[33;1m"
+#define ANSI_COLOR_CYAN    "\x1b[36;1m"
+#define ANSI_COLOR_MAGENTA "\x1b[35;1m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
-
-int main(int argc, const char ** argv)
-{
-  if (argc < 4) {
-    fprintf(stderr, "Usage: %s <so_filename> <index_filename> [<las_filename>]+\n", argv[0]);
-    exit(-1);
-  }
-
-  load_curve(argv[1]);
-  pdal_load(argv[2], (argv + 3), argc - 3);
-
-  return 0;
-}
+#endif
