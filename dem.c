@@ -38,10 +38,15 @@
 #include "index/index.h"
 #include "pdal/pdal_point.h"
 
+#define MIN(a,b) ((a)<(b)?(a):(b))
+#define MAX(a,b) ((a)<(b)?(b):(a))
+#define EPSILON (0.001)
+
 
 int main(int argc, const char ** argv)
 {
-  void * data;
+  void * _data;
+  pdal_point * data;
   char * projection;
   double x_min, x_max, y_min, y_max;
   unsigned long long sample_count;
@@ -53,9 +58,9 @@ int main(int argc, const char ** argv)
   }
 
   load_curve(argv[1]);
-  data = map_index(argv[2], &stat);
+  _data = map_index(argv[2], &stat);
 
-  data = read_header(data,
+  data = read_header(_data,
                      curve_name(), curve_version(),
                      &projection,
                      &x_min, &x_max, &y_min, &y_max,
@@ -77,5 +82,36 @@ int main(int argc, const char ** argv)
           ANSI_COLOR_RESET "\n",
           sample_count);
 
-  unmap_index(data, &stat);
+  /* Query */
+  {
+    pdal_point point = data[33];
+    double bb_min_x = MAX(point.x - EPSILON, 0.0);
+    double bb_min_y = MAX(point.y - EPSILON, 0.0);
+    double bb_max_x = MIN(point.x + EPSILON, 1.0);
+    double bb_max_y = MIN(point.y + EPSILON, 1.0);
+    query_key min_key = {.key = xy_to_curve(bb_min_x, bb_min_y)};
+    query_key max_key = {.key = xy_to_curve(bb_max_x, bb_max_y)};
+    double x, y;
+    uint32_t x_bits1, y_bits1, x_bits2, y_bits2;
+
+    fprintf(stdout,
+            "point: x = %lf\t y = %lf\t z = %lf\t key = 0x%016lX\n",
+            point.x, point.y, point.z, point.key);
+
+    curve_to_xy(min_key.key, &x, &y);
+    x_bits1 = (uint32_t)(((uint32_t)(-1))*x);
+    y_bits1 = (uint32_t)(((uint32_t)(-1))*y);
+    fprintf(stdout, "min_key: key = 0x%016lX %lf %lf 0x%08X 0x%08X\n",
+            min_key.key, x, y, x_bits1, y_bits1);
+
+    curve_to_xy(max_key.key, &x, &y);
+    x_bits2 = (uint32_t)(((uint32_t)(-1))*x);
+    y_bits2 = (uint32_t)(((uint32_t)(-1))*y);
+    fprintf(stdout, "max_key: key = 0x%016lX %lf %lf 0x%08X 0x%08X\n",
+            max_key.key, x, y, x_bits2, y_bits2);
+
+    fprintf(stdout, "0x%08X 0x%08X\n", (x_bits1 ^ x_bits2), (y_bits1 ^ y_bits2));
+  }
+
+  unmap_index(_data, &stat);
 }
