@@ -13,23 +13,34 @@ CXXFLAGS += -std=c++11
 
 all: point_index dem curve/libHilbert2D.so.1.0.1 curve/libMorton2D.so.1.0.1 curve/libTrivial2D.so.1.0.1
 
+# Components
+
 curve/curve_interface.o curve/libHilbert2D.so.1.0.1 curve/libMorton2D.so.1.0.1 curve/libTrivial2D.so.1.0.1: curve/*.[ch]
 	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C curve
 
 index/index.o: index/index.[ch]
 	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C index
 
+pdal/pdal.o: pdal/pdal.cpp pdal/*.h
+	CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) $(PDAL_CXXFLAGS) $(STXXL_CXXFLAGS) -I$(shell pwd)" make -C pdal
+
+# Programs
+
 dem: dem.o curve/curve_interface.o index/index.o
 	$(CC) $^ -ldl -o $@
 
-point_index: point_index.o opencl.o pdal.o curve/curve_interface.o index/index.o
-	$(CC) -rdynamic -fopenmp $^ $(PDAL_LDFLAGS) $(OPENCL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -lm -o $@
+point_index: point_index.o pdal/pdal.o curve/curve_interface.o index/index.o
+	$(CC) -rdynamic -fopenmp $^ $(PDAL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -lm -o $@
+
+# Test Programs
 
 viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -o $@
 
 sort_test: sort_test.o opencl.o bitonic.o partition.o
 	$(CC) $^ $(OPENCL_LDFLAGS) -o $@
+
+# Object Files
 
 %.o: %.c %.h Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
@@ -40,11 +51,10 @@ sort_test: sort_test.o opencl.o bitonic.o partition.o
 %.o: %.cpp %.h Makefile
 	$(CXX) $(CXXFLAGS) $< -c -o $@
 
-pdal.o: pdal.cpp pdal.h Makefile
-	$(CXX) -fopenmp -Wno-terminate $(CXXFLAGS) $< $(PDAL_CXXFLAGS) $(STXXL_CXXFLAGS) -c -o $@
-
 %o: %.cpp Makefile
 	$(CXX) $(CXXFLAGS) $< -c -o $@
+
+# Additional Targets
 
 test: sort_test viewshed_test
 	sort_test 24

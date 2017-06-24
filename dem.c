@@ -36,6 +36,7 @@
 #include "ansi.h"
 #include "curve/curve_interface.h"
 #include "index/index.h"
+#include "pdal/pdal_point.h"
 
 
 int main(int argc, const char ** argv)

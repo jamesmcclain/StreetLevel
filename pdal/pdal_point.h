@@ -29,8 +29,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __PDAL_H__
-#define __PDAL_H__
+#ifndef __PDAL_POINT_H__
+#define __PDAL_POINT_H__
 
 #include <stdint.h>
 
@@ -40,16 +40,5 @@ typedef struct pdal_point {
   double z;
   uint64_t key;
 } pdal_point;
-
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-  void pdal_load(const char * ifilename, const char ** filenamev, int filenamec);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2014 and 2016-2017, James McClain and Mark Pugner
+ * Copyright (c) 2017, James McClain
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -12,8 +12,7 @@
  *    distribution.
  * 3. All advertising materials mentioning features or use of this
  *    software must display the following acknowledgement: This product
- *    includes software developed by Dr. James W. McClain and Dr. Mark
- *    C. Pugner.
+ *    includes software developed by Dr. James W. McClain.
  * 4. Neither the names of the authors nor the names of the
  *    contributors may be used to endorse or promote products derived
  *    from this software without specific prior written permission.
@@ -30,26 +29,19 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <string.h>
-#include <time.h>
-#include <sys/time.h>
+#ifndef __PDAL_H__
+#define __PDAL_H__
 
-#include "curve/curve_interface.h"
-#include "pdal/pdal.h"
+#include "pdal_point.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-int main(int argc, const char ** argv)
-{
-  if (argc < 4) {
-    fprintf(stderr, "Usage: %s <so_filename> <index_filename> [<las_filename>]+\n", argv[0]);
-    exit(-1);
-  }
+  void pdal_load(const char * ifilename, const char ** filenamev, int filenamec);
 
-  load_curve(argv[1]);
-  pdal_load(argv[2], (argv + 3), argc - 3);
-
-  return 0;
+#ifdef __cplusplus
 }
+#endif
+
+#endif

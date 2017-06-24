@@ -48,9 +48,9 @@
 #include <stxxl/sorter>
 
 #include "ansi.h"
-#include "pdal.h"
 #include "curve/curve_interface.h"
 #include "index/index.h"
+#include "pdal.h"
 
 using namespace pdal;
 
