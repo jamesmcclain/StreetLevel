@@ -36,12 +36,10 @@
 #include <assert.h>
 #include <string.h>
 #include <time.h>
-
 #include <sys/time.h>
 
 #include "bitonic.h"
 #include "partition.h"
-#include "pdal.h"
 
 
 int compare(const void * _a, const void * _b)

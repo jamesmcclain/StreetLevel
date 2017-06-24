@@ -48,12 +48,6 @@ sort_test: sort_test.o opencl.o bitonic.o partition.o
 %.o: %.c Makefile
 	$(CC) $(CFLAGS) $< -c -o $@
 
-%.o: %.cpp %.h Makefile
-	$(CXX) $(CXXFLAGS) $< -c -o $@
-
-%o: %.cpp Makefile
-	$(CXX) $(CXXFLAGS) $< -c -o $@
-
 # Additional Targets
 
 test: sort_test viewshed_test
@@ -61,25 +55,26 @@ test: sort_test viewshed_test
 	rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
 
 valgrind: sort_test viewshed_test
-	valgrind --leak-check=full dem_test /tmp/1422.las blah
 	valgrind --leak-check=full viewshed_test /tmp/ned.tif /tmp/viewshed.tif
 
 cachegrind: sort_test viewshed_test
-	valgrind --tool=cachegrind --branch-sim=yes dem_test /tmp/1422.las blah
 	valgrind --tool=cachegrind --branch-sim=yes viewshed_test /tmp/ned.tif /tmp/viewshed.tif
 
 clean:
 	rm -f *.o
 	make -C curve clean
 	make -C index clean
+	make -C pdal clean
 
 cleaner: clean
 	rm -f point_index dem viewshed_test sort_test
 	rm -f stxxl.errlog stxxl.log
 	make -C curve cleaner
 	make -C index cleaner
+	make -C pdal cleaner
 
 cleanest: cleaner
 	rm -f cachegrind.out.*
 	make -C curve cleanest
 	make -C index cleanest
+	make -C pdal cleanest
