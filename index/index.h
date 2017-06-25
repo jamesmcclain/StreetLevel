@@ -39,11 +39,6 @@
 #define MAGIC1 (0x466c6f72656e6365)
 #define MAGIC2 (0x4e6f726d6e646965)
 
-typedef struct query_key {
-  uint64_t key;
-  unsigned long long * index;
-} query_key;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
