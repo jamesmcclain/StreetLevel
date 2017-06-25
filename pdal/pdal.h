@@ -29,19 +29,19 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __ANSI_H__
-#define __ANSI_H__
+#ifndef __PDAL_H__
+#define __PDAL_H__
 
-/*
- * Reference: https://stackoverflow.com/questions/3219393/stdlib-and-colored-output-in-c
- * Reference: https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
- */
-#define ANSI_COLOR_RED     "\x1b[31;1m"
-#define ANSI_COLOR_GREEN   "\x1b[32;1m"
-#define ANSI_COLOR_YELLOW  "\x1b[33;1m"
-#define ANSI_COLOR_BLUE    "\x1b[34;1m"
-#define ANSI_COLOR_MAGENTA "\x1b[35;1m"
-#define ANSI_COLOR_CYAN    "\x1b[36;1m"
-#define ANSI_COLOR_RESET   "\x1b[0m"
+#include "pdal_point.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+  void pdal_load(const char * ifilename, const char ** filenamev, int filenamec);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

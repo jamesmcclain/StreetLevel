@@ -48,9 +48,9 @@
 #include <stxxl/sorter>
 
 #include "ansi.h"
-#include "pdal.h"
 #include "curve/curve_interface.h"
 #include "index/index.h"
+#include "pdal.h"
 
 using namespace pdal;
 
@@ -165,10 +165,10 @@ void pdal_load(const char * ifilename, const char ** filenamev, int filenamec) {
 
     for (uint j = 0; j < header.pointCount(); ++j) {
       pdal_point p;
-      p.x = view->point(j).getFieldAs<double>(pdal::Dimension::Id::X);
-      p.y = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Y);
+      p.x = (view->point(j).getFieldAs<double>(pdal::Dimension::Id::X) - x_min)/x_range;
+      p.y = (view->point(j).getFieldAs<double>(pdal::Dimension::Id::Y) - y_min)/y_range;
       p.z = view->point(j).getFieldAs<double>(pdal::Dimension::Id::Z);
-      p.key = xy_to_curve((p.x - x_min)/x_range, (p.y - y_min)/y_range);
+      p.key = xy_to_curve(p.x, p.y);
       sorter.push(p);
     }
   }

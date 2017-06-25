@@ -38,7 +38,7 @@
 #include <sys/time.h>
 
 #include "curve/curve_interface.h"
-#include "pdal.h"
+#include "pdal/pdal.h"
 
 
 int main(int argc, const char ** argv)
