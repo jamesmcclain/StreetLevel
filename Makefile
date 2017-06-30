@@ -21,6 +21,9 @@ curve/curve_interface.o curve/libHilbert2D.so.1.0.1 curve/libMorton2D.so.1.0.1 c
 index/index.o: index/index.[ch]
 	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C index
 
+gdal/gdal.o: gdal/rasterio.[ch]
+	CC="$(CC)" CFLAGS="$(CFLAGS)" make -C gdal
+
 pdal/pdal.o: pdal/pdal.cpp pdal/*.h
 	CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) $(PDAL_CXXFLAGS) $(STXXL_CXXFLAGS) -I$(shell pwd)" make -C pdal
 
@@ -34,7 +37,7 @@ point_index: point_index.o pdal/pdal.o curve/curve_interface.o index/index.o
 
 # Test Programs
 
-viewshed_test: viewshed_test.o rasterio.o opencl.o viewshed.o
+viewshed_test: viewshed_test.o gdal/rasterio.o opencl.o viewshed.o
 	$(CC) $^ $(GDAL_LDFLAGS) $(OPENCL_LDFLAGS) -o $@
 
 sort_test: sort_test.o opencl.o bitonic.o partition.o
@@ -42,10 +45,10 @@ sort_test: sort_test.o opencl.o bitonic.o partition.o
 
 # Object Files
 
-%.o: %.c %.h Makefile
+%.o: %.c %.h
 	$(CC) $(CFLAGS) $< -c -o $@
 
-%.o: %.c Makefile
+%.o: %.c
 	$(CC) $(CFLAGS) $< -c -o $@
 
 # Additional Targets
@@ -58,6 +61,7 @@ clean:
 	rm -f *.o
 	make -C curve clean
 	make -C index clean
+	make -C gdal clean
 	make -C pdal clean
 
 cleaner: clean
@@ -65,10 +69,12 @@ cleaner: clean
 	rm -f stxxl.errlog stxxl.log
 	make -C curve cleaner
 	make -C index cleaner
+	make -C gdal cleaner
 	make -C pdal cleaner
 
 cleanest: cleaner
 	rm -f cachegrind.out.*
 	make -C curve cleanest
 	make -C index cleanest
+	make -C gdal cleanest
 	make -C pdal cleanest
