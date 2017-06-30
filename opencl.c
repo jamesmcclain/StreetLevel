@@ -39,8 +39,8 @@
 #include <sys/stat.h>
 #include "opencl.h"
 
-char * readfile(const char * filename)
-{
+
+char * readfile(const char * filename) {
   char * str;
   int fd, ret;
   struct stat buf;
@@ -54,8 +54,7 @@ char * readfile(const char * filename)
   return str;
 }
 
-void opencl_init(int N, int * n, opencl_struct * info)
-{
+void opencl_init(int N, int * n, opencl_struct * info) {
   cl_int ret;
   cl_platform_id platforms[4];
   cl_uint num_platforms;
@@ -66,40 +65,36 @@ void opencl_init(int N, int * n, opencl_struct * info)
   ENSURE(clGetPlatformIDs(0, NULL, &num_platforms), ret);
   ENSURE(clGetPlatformIDs(SMALLER(num_platforms, N), platforms, &num_platforms), ret);
 
-  for (int i = 0; i < num_platforms; ++i)
-    {
-      cl_device_id devices[4];
-      cl_uint num_devices;
+  for (int i = 0; i < num_platforms; ++i) {
+    cl_device_id devices[4];
+    cl_uint num_devices;
 
-      // Query Devices
-      ret = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
-      ret |= clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, SMALLER(num_devices, N), devices, &num_devices);
-      if (ret) num_devices = 0;
+    // Query Devices
+    ret = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
+    ret |= clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, SMALLER(num_devices, N), devices, &num_devices);
+    if (ret) num_devices = 0;
 
-      // Contexts and Command Queues
-      for (int j = 0; j < num_devices; ++j, ++(*n))
-        {
-          info[*n].platform = platforms[i];
-          info[*n].device = devices[j];
-          info[*n].context = clCreateContext(NULL, 1, &devices[j], NULL, NULL, &ret);
-          ENSURE(ret, ret);
-          info[*n].queue = clCreateCommandQueue(info[*n].context, info[*n].device, 0, &ret);
-          ENSURE(ret, ret);
-        }
+    // Contexts and Command Queues
+    for (int j = 0; j < num_devices; ++j, ++(*n)) {
+      info[*n].platform = platforms[i];
+      info[*n].device = devices[j];
+      info[*n].context = clCreateContext(NULL, 1, &devices[j], NULL, NULL, &ret);
+      ENSURE(ret, ret);
+      info[*n].queue = clCreateCommandQueue(info[*n].context, info[*n].device, 0, &ret);
+      ENSURE(ret, ret);
     }
+  }
 }
 
-void opencl_finit(int n, opencl_struct * info)
-{
+void opencl_finit(int n, opencl_struct * info) {
   cl_int ret;
 
-  for (int i = 0; i < n; ++i)
-    {
-      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clFinish.html
-      ENSURE(clFinish(info[i].queue), ret);
-      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseCommandQueue.html
-      ENSURE(clReleaseCommandQueue(info[i].queue), ret);
-      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseContext.html
-      ENSURE(clReleaseContext(info[i].context), ret);
-    }
+  for (int i = 0; i < n; ++i) {
+    // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clFinish.html
+    ENSURE(clFinish(info[i].queue), ret);
+    // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseCommandQueue.html
+    ENSURE(clReleaseCommandQueue(info[i].queue), ret);
+    // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clReleaseContext.html
+    ENSURE(clReleaseContext(info[i].context), ret);
+  }
 }

@@ -36,11 +36,11 @@
 #include "bitonic.h"
 #include "opencl.h"
 
+
 void bitonic(int device,
              const opencl_struct * info,
              float * xs,
-             size_t n)
-{
+             size_t n) {
   const char * program_src;
   size_t program_src_length;
 
@@ -87,18 +87,16 @@ void bitonic(int device,
    ******************/
   // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clSetKernelArg.html
   ENSURE(clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffer), ret);
-  for (cl_int current_level = 0; current_level < max_level; ++current_level)
-    {
-      ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_int), &current_level), ret);
-      for (cl_int k = current_level; k >= 0; --k)
-        {
-          ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_int), &k), ret);
-          // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
-          ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
-                                        NULL, &n, NULL,
-                                        0, NULL, NULL), ret);
-        }
+  for (cl_int current_level = 0; current_level < max_level; ++current_level) {
+    ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_int), &current_level), ret);
+    for (cl_int k = current_level; k >= 0; --k) {
+      ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_int), &k), ret);
+      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
+      ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
+                                    NULL, &n, NULL,
+                                    0, NULL, NULL), ret);
     }
+  }
 
   /***************************
    * READ RESULT FROM DEVICE *

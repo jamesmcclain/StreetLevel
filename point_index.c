@@ -41,8 +41,7 @@
 #include "pdal/pdal.h"
 
 
-int main(int argc, const char ** argv)
-{
+int main(int argc, const char ** argv) {
   if (argc < 4) {
     fprintf(stderr, "Usage: %s <so_filename> <index_filename> [<las_filename>]+\n", argv[0]);
     exit(-1);

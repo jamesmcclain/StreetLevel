@@ -31,15 +31,15 @@
  */
 
 #include "opencl.h"
-#include "rasterio.h"
+#include "gdal/rasterio.h"
+
 
 void viewshed(int device,
               const opencl_struct * info,
               const float * src, float * dst,
               int cols, int rows,
               int x, int y, float z,
-              double xres, double yres)
-{
+              double xres, double yres) {
   const char * program_src;
   size_t program_src_length;
 
@@ -105,67 +105,61 @@ void viewshed(int device,
   ENSURE(clSetKernelArg(kernel, 1, sizeof(cl_mem), &dst_buffer), ret);
   ENSURE(clSetKernelArg(kernel, 2, sizeof(cl_mem), &alphas), ret);
   ENSURE(clSetKernelArg(kernel, 7, sizeof(cl_float), &_z), ret);
-  for (int cardinal = 0; cardinal < 4; ++cardinal)
-    {
-      global_work_size = 0;
-      this_steps = that_steps = -1;
+  for (int cardinal = 0; cardinal < 4; ++cardinal) {
+    global_work_size = 0;
+    this_steps = that_steps = -1;
 
-      if (cardinal == 0) // East
-        {
-          flip = 0, transpose = 0;
-          _x = x, _y = y, _cols = cols, _rows = rows;
-          _xres = xres, _yres = yres;
-        }
-      else if (cardinal == 1) // South
-        {
-          flip = 0, transpose = 1;
-          _x = (_y-1), _y = x, _cols = rows, _rows = cols;
-          _xres = yres, _yres = xres;
-        }
-      else if (cardinal == 2) // West
-        {
-          flip = 1, transpose = 0;
-          _x = cols-x, _y = y, _cols = cols, _rows = rows;
-          _xres = xres, _yres = yres;
-        }
-      else if (cardinal == 3) // North
-        {
-          flip = 1, transpose = 1;
-          _x = rows-y, _y = x, _cols = rows, _rows = cols;
-          _xres = yres, _yres = xres;
-        }
-
-      ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &_cols), ret);
-      ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &_rows), ret);
-      ENSURE(clSetKernelArg(kernel, 5, sizeof(cl_int), &_x), ret);
-      ENSURE(clSetKernelArg(kernel, 6, sizeof(cl_int), &_y), ret);
-      ENSURE(clSetKernelArg(kernel, 8, sizeof(cl_float), &_xres), ret);
-      ENSURE(clSetKernelArg(kernel, 9, sizeof(cl_float), &_yres), ret);
-      ENSURE(clSetKernelArg(kernel, 10, sizeof(cl_int), &flip), ret);
-      ENSURE(clSetKernelArg(kernel, 11, sizeof(cl_int), &transpose), ret);
-
-      //Enqueue kernel the correct number of times per column of tiles
-      for (cl_int start_col = _x, width = 1; start_col < _cols; start_col += width)
-        {
-          if (start_col == _x) for (; (start_col + width) % TILESIZE; ++width);
-          else width = TILESIZE;
-
-          cl_int stop_col = SMALLER(start_col + width, _cols);
-          that_steps = this_steps;
-          this_steps = (int)(((float)(_cols-_x))/(stop_col-_x));
-          global_work_size = (_rows / this_steps) + 1;
-
-          ENSURE(clSetKernelArg(kernel, 12, sizeof(cl_int), &start_col), ret);
-          ENSURE(clSetKernelArg(kernel, 13, sizeof(cl_int), &stop_col), ret);
-          ENSURE(clSetKernelArg(kernel, 14, sizeof(cl_int), &this_steps), ret);
-          ENSURE(clSetKernelArg(kernel, 15, sizeof(cl_int), &that_steps), ret);
-
-          // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
-          ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
-                                        NULL, &global_work_size, NULL,
-                                        0, NULL, NULL), ret);
-        }
+    if (cardinal == 0) { // East
+      flip = 0, transpose = 0;
+      _x = x, _y = y, _cols = cols, _rows = rows;
+      _xres = xres, _yres = yres;
     }
+    else if (cardinal == 1) { // South
+      flip = 0, transpose = 1;
+      _x = (_y-1), _y = x, _cols = rows, _rows = cols;
+      _xres = yres, _yres = xres;
+    }
+    else if (cardinal == 2) { // West
+      flip = 1, transpose = 0;
+      _x = cols-x, _y = y, _cols = cols, _rows = rows;
+      _xres = xres, _yres = yres;
+    }
+    else if (cardinal == 3) { // North
+      flip = 1, transpose = 1;
+      _x = rows-y, _y = x, _cols = rows, _rows = cols;
+      _xres = yres, _yres = xres;
+    }
+
+    ENSURE(clSetKernelArg(kernel, 3, sizeof(cl_int), &_cols), ret);
+    ENSURE(clSetKernelArg(kernel, 4, sizeof(cl_int), &_rows), ret);
+    ENSURE(clSetKernelArg(kernel, 5, sizeof(cl_int), &_x), ret);
+    ENSURE(clSetKernelArg(kernel, 6, sizeof(cl_int), &_y), ret);
+    ENSURE(clSetKernelArg(kernel, 8, sizeof(cl_float), &_xres), ret);
+    ENSURE(clSetKernelArg(kernel, 9, sizeof(cl_float), &_yres), ret);
+    ENSURE(clSetKernelArg(kernel, 10, sizeof(cl_int), &flip), ret);
+    ENSURE(clSetKernelArg(kernel, 11, sizeof(cl_int), &transpose), ret);
+
+    //Enqueue kernel the correct number of times per column of tiles
+    for (cl_int start_col = _x, width = 1; start_col < _cols; start_col += width) {
+      if (start_col == _x) for (; (start_col + width) % TILESIZE; ++width);
+      else width = TILESIZE;
+
+      cl_int stop_col = SMALLER(start_col + width, _cols);
+      that_steps = this_steps;
+      this_steps = (int)(((float)(_cols-_x))/(stop_col-_x));
+      global_work_size = (_rows / this_steps) + 1;
+
+      ENSURE(clSetKernelArg(kernel, 12, sizeof(cl_int), &start_col), ret);
+      ENSURE(clSetKernelArg(kernel, 13, sizeof(cl_int), &stop_col), ret);
+      ENSURE(clSetKernelArg(kernel, 14, sizeof(cl_int), &this_steps), ret);
+      ENSURE(clSetKernelArg(kernel, 15, sizeof(cl_int), &that_steps), ret);
+
+      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
+      ENSURE(clEnqueueNDRangeKernel(info[device].queue, kernel, 1,
+                                    NULL, &global_work_size, NULL,
+                                    0, NULL, NULL), ret);
+    }
+  }
 
   /***************************
    * READ RESULT FROM DEVICE *

@@ -58,8 +58,7 @@ int compar(const void * _key, const void * _point) {
   else return 0;
 }
 
-int main(int argc, const char ** argv)
-{
+int main(int argc, const char ** argv) {
   void * _data;
   pdal_point * data;
   char * projection;
