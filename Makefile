@@ -54,12 +54,6 @@ test: sort_test viewshed_test
 	sort_test 24
 	rm -f /tmp/viewshed.tif* ; viewshed_test /tmp/ned.tif /tmp/viewshed.tif
 
-valgrind: sort_test viewshed_test
-	valgrind --leak-check=full viewshed_test /tmp/ned.tif /tmp/viewshed.tif
-
-cachegrind: sort_test viewshed_test
-	valgrind --tool=cachegrind --branch-sim=yes viewshed_test /tmp/ned.tif /tmp/viewshed.tif
-
 clean:
 	rm -f *.o
 	make -C curve clean
