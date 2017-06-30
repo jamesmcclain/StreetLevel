@@ -35,9 +35,9 @@
 #include <string.h>
 #include "rasterio.h"
 
+
 // Reference: http://www.gdal.org/gdal_tutorial.html
-void rasterio_init()
-{
+void rasterio_init() {
   GDALAllRegister();
 }
 
@@ -46,8 +46,7 @@ void rasterio_load(const char * filename,
                    uint32_t * cols, uint32_t * rows,
                    double * transform,
                    char ** projection,
-                   float ** image)
-{
+                   float ** image) {
   GDALDatasetH dataset;
   GDALRasterBandH band;
   const char * proj = NULL;
@@ -55,40 +54,35 @@ void rasterio_load(const char * filename,
   uint32_t orig_cols, orig_rows;
 
   dataset = GDALOpen(filename, GA_ReadOnly);  // GDAL dataset
-  if (!dataset)
-    {
-      fprintf(stderr, "Unable to open file %s %s:%d\n", filename, __FILE__, __LINE__);
-      exit(-1);
-    }
+  if (!dataset) {
+    fprintf(stderr, "Unable to open file %s %s:%d\n", filename, __FILE__, __LINE__);
+    exit(-1);
+  }
   band = GDALGetRasterBand(dataset, 1); // Get the first band
-  if (GDALGetGeoTransform(dataset, transform) != CE_None) // Get the transform
-    {
-      fprintf(stderr, "Incomprehensible transform %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
-  if ((proj = GDALGetProjectionRef(dataset))) // Get the projection
-    {
-      int n = strlen(proj);
-      *projection = calloc(n+1, sizeof(char));
-      strncpy(*projection, proj, n);
-    }
+  if (GDALGetGeoTransform(dataset, transform) != CE_None) { // Get the transform
+    fprintf(stderr, "Incomprehensible transform %s:%d\n", __FILE__, __LINE__);
+    exit(-1);
+  }
+  if ((proj = GDALGetProjectionRef(dataset))) { // Get the projection
+    int n = strlen(proj);
+    *projection = calloc(n+1, sizeof(char));
+    strncpy(*projection, proj, n);
+  }
 
   orig_cols = GDALGetRasterBandXSize(band); // Number of columns
   orig_rows = GDALGetRasterBandYSize(band); // Number of rows
   *cols = orig_cols % TILESIZE ? (((orig_cols >> TILEBITS) + 1) << TILEBITS) : orig_cols; // Padded columns
   *rows = orig_rows % TILESIZE ? (((orig_rows >> TILEBITS) + 1) << TILEBITS) : orig_rows; // Padded rows
 
-  if (!(tmp = (float *) CPLMalloc(sizeof(float) * *cols * *rows))) // Untiled image
-    {
-      fprintf(stderr, "CPLMalloc failed %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
+  if (!(tmp = (float *) CPLMalloc(sizeof(float) * *cols * *rows))) { // Untiled image
+    fprintf(stderr, "CPLMalloc failed %s:%d\n", __FILE__, __LINE__);
+    exit(-1);
+  }
 
-  if (!(*image = (float *) aligned_alloc(PAGESIZE, sizeof(float) * *cols * *rows))) // Tiled image
-    {
-      fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
+  if (!(*image = (float *) aligned_alloc(PAGESIZE, sizeof(float) * *cols * *rows))) { // Tiled image
+    fprintf(stderr, "aligned_alloc failed %s:%d\n", __FILE__, __LINE__);
+    exit(-1);
+  }
 
   if (GDALRasterIO(band, GF_Read, // Copy data
                    0, 0,
@@ -96,21 +90,18 @@ void rasterio_load(const char * filename,
                    tmp,
                    orig_cols, orig_rows,
                    GDT_Float32,
-                   0, sizeof(float) * *cols))
-    {
-      fprintf(stderr, "GDALRasterIO failed %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
+                   0, sizeof(float) * *cols)) {
+    fprintf(stderr, "GDALRasterIO failed %s:%d\n", __FILE__, __LINE__);
+    exit(-1);
+  }
 
-  for (int i = 0; i < *cols; ++i) // Copy untiled image data into tiled array
-    {
-      for (int j = 0; j < *rows; ++j)
-        {
-          int src_index = j * *cols + i;
-          int dst_index = xy_to_fancy_index(*cols, i, j);
-          (*image)[dst_index] = tmp[src_index];
-        }
+  for (int i = 0; i < *cols; ++i) { // Copy untiled image data into tiled array
+    for (int j = 0; j < *rows; ++j) {
+      int src_index = j * *cols + i;
+      int dst_index = xy_to_fancy_index(*cols, i, j);
+      (*image)[dst_index] = tmp[src_index];
     }
+  }
 
   CPLFree(tmp);
   GDALClose(dataset);
@@ -121,24 +112,21 @@ void rasterio_dump(const char * filename,
                    uint32_t cols, uint32_t rows,
                    double * transform,
                    const char * projection,
-                   float * image)
-{
+                   float * image) {
   GDALDatasetH dataset;
   GDALDriverH driver;
   GDALRasterBandH band;
 
   driver = GDALGetDriverByName("GTiff");
-  if (!driver)
-    {
-      fprintf(stderr, "Unable to create \"GTiff\" driver %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
+  if (!driver) {
+    fprintf(stderr, "Unable to create \"GTiff\" driver %s:%d\n", __FILE__, __LINE__);
+    exit(-1);
+  }
   dataset = GDALCreate(driver, filename, cols, rows, 1, GDT_Float32, NULL);
-  if (!dataset)
-    {
-      fprintf(stderr, "Unable to create dataset %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
+  if (!dataset) {
+    fprintf(stderr, "Unable to create dataset %s:%d\n", __FILE__, __LINE__);
+    exit(-1);
+  }
   GDALSetGeoTransform(dataset, transform);
   GDALSetProjection(dataset, projection);
   band = GDALGetRasterBand(dataset, 1);
@@ -148,27 +136,23 @@ void rasterio_dump(const char * filename,
                    image,
                    cols, rows,
                    GDT_Float32,
-                   0, 0))
-    {
-      fprintf(stderr, "GDALRasterIO failed %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
+                   0, 0)) {
+    fprintf(stderr, "GDALRasterIO failed %s:%d\n", __FILE__, __LINE__);
+    exit(-1);
+  }
 
   GDALClose(dataset);
 }
 
-double x_resolution(const double * transform)
-{
+double x_resolution(const double * transform) {
   return transform[1] / 2.0;
 }
 
-double y_resolution(const double * transform)
-{
+double y_resolution(const double * transform) {
   return -transform[5] / 2.0;
 }
 
-uint32_t xy_to_fancy_index(uint32_t cols, uint32_t x, uint32_t y)
-{
+uint32_t xy_to_fancy_index(uint32_t cols, uint32_t x, uint32_t y) {
   int tile_row_words = cols * TILESIZE; // words per row of tiles
   int tile_x = x >> TILEBITS; // column of tile that (x,y) is in
   int tile_y = y >> TILEBITS; // row of tile that (x,y) is in
@@ -187,7 +171,6 @@ uint32_t xy_to_fancy_index(uint32_t cols, uint32_t x, uint32_t y)
   return major_index + minor_index + micro_index;
 }
 
-uint32_t xy_to_vanilla_index(uint32_t cols, uint32_t x, uint32_t y)
-{
+uint32_t xy_to_vanilla_index(uint32_t cols, uint32_t x, uint32_t y) {
   return (y*cols) + x;
 }

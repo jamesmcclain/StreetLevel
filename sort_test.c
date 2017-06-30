@@ -42,8 +42,7 @@
 #include "partition.h"
 
 
-int compare(const void * _a, const void * _b)
-{
+int compare(const void * _a, const void * _b) {
   float a = *(float *)_a;
   float b = *(float *)_b;
 
@@ -52,17 +51,15 @@ int compare(const void * _a, const void * _b)
   else return 0;
 }
 
-int main(int argc, char ** argv)
-{
+int main(int argc, char ** argv) {
   int devices;
   opencl_struct info[4];
   struct timeval t1, t2, t3, t4;
 
-  if (argc < 2)
-    {
-      fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
+  if (argc < 2) {
+    fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
+    exit(-1);
+  }
 
   int order; sscanf(argv[1], "%d", &order);
   int n = 1<<(order);

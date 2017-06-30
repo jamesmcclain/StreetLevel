@@ -52,9 +52,10 @@
 #include "index/index.h"
 #include "pdal.h"
 
-using namespace pdal;
-
 #define USECONDS ((t2.tv_sec - t1.tv_sec) * 1000000 + (t2.tv_usec - t1.tv_usec))
+
+
+using namespace pdal;
 
 // Sorting
 pdal_point min_point;

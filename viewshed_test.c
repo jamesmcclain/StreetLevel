@@ -33,12 +33,12 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <sys/time.h>
-#include "rasterio.h"
+#include "gdal/rasterio.h"
 #include "opencl.h"
 #include "viewshed.h"
 
-int main(int argc, char ** argv)
-{
+
+int main(int argc, char ** argv) {
   char * projection;
   double transform[6];
   float * src, * dst;
@@ -47,11 +47,10 @@ int main(int argc, char ** argv)
   struct timeval before, after;
   uint32_t cols, rows;
 
-  if (argc < 3)
-    {
-      fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
-      exit(-1);
-    }
+  if (argc < 3) {
+    fprintf(stderr, "Not enough arguments %s:%d\n", __FILE__, __LINE__);
+    exit(-1);
+  }
 
   /**************
    * INITIALIZE *

@@ -35,8 +35,8 @@
 #include "opencl.h"
 #include "partition.h"
 
-void partition(int device, const opencl_struct * info, float * _xs, cl_float pivot, size_t _n)
-{
+
+void partition(int device, const opencl_struct * info, float * _xs, cl_float pivot, size_t _n) {
   const char * program_src;
   size_t program_src_length;
 
@@ -91,33 +91,31 @@ void partition(int device, const opencl_struct * info, float * _xs, cl_float piv
   // PREFIX SUM
   ENSURE(clSetKernelArg(sum, 0, sizeof(cl_mem), &bitsums), ret);
   ENSURE(clSetKernelArg(sum, 1, sizeof(cl_int), &n), ret);
-  for (int k = 1; k < max_k; ++k)
-    {
-      cl_int start = ((1<<k)-1);
-      cl_int log_stride = k+1;
-      size_t last = ((_n - start)>>log_stride) + 1; // Want ids from 0 to ((_n - start)>>log_stride) inclusive
-      cl_int length = 1<<k;
+  for (int k = 1; k < max_k; ++k) {
+    cl_int start = ((1<<k)-1);
+    cl_int log_stride = k+1;
+    size_t last = ((_n - start)>>log_stride) + 1; // Want ids from 0 to ((_n - start)>>log_stride) inclusive
+    cl_int length = 1<<k;
 
-      ENSURE(clSetKernelArg(sum, 2, sizeof(cl_int), &start), ret);
-      ENSURE(clSetKernelArg(sum, 3, sizeof(cl_int), &log_stride), ret);
-      ENSURE(clSetKernelArg(sum, 4, sizeof(cl_int), &length), ret);
-      // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
-      ENSURE(clEnqueueNDRangeKernel(info[device].queue, sum, 1, NULL, &last, NULL, 0, NULL, NULL), ret);
-    }
-  for (int k = max_k-1; k >= 0; --k)
-    {
-      cl_int start = ((1<<(k+1))-1);
-      cl_int log_stride = k+1;
-      size_t last = ((_n - start)>>log_stride) + 1;
-      cl_int length = 1<<k;
+    ENSURE(clSetKernelArg(sum, 2, sizeof(cl_int), &start), ret);
+    ENSURE(clSetKernelArg(sum, 3, sizeof(cl_int), &log_stride), ret);
+    ENSURE(clSetKernelArg(sum, 4, sizeof(cl_int), &length), ret);
+    // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
+    ENSURE(clEnqueueNDRangeKernel(info[device].queue, sum, 1, NULL, &last, NULL, 0, NULL, NULL), ret);
+  }
+  for (int k = max_k-1; k >= 0; --k) {
+    cl_int start = ((1<<(k+1))-1);
+    cl_int log_stride = k+1;
+    size_t last = ((_n - start)>>log_stride) + 1;
+    cl_int length = 1<<k;
 
-      ENSURE(clSetKernelArg(sum, 2, sizeof(cl_int), &start), ret);
-      ENSURE(clSetKernelArg(sum, 3, sizeof(cl_int), &log_stride), ret);
-      ENSURE(clSetKernelArg(sum, 4, sizeof(cl_int), &length), ret);
-      ENSURE(clEnqueueNDRangeKernel(info[device].queue, sum, 1,
-                                    NULL, &last, NULL,
-                                    0, NULL, NULL), ret);
-    }
+    ENSURE(clSetKernelArg(sum, 2, sizeof(cl_int), &start), ret);
+    ENSURE(clSetKernelArg(sum, 3, sizeof(cl_int), &log_stride), ret);
+    ENSURE(clSetKernelArg(sum, 4, sizeof(cl_int), &length), ret);
+    ENSURE(clEnqueueNDRangeKernel(info[device].queue, sum, 1,
+                                  NULL, &last, NULL,
+                                  0, NULL, NULL), ret);
+  }
 
   // PARTITION using PREFIX SUM
   ENSURE(clSetKernelArg(part, 0, sizeof(cl_mem), &bitsums), ret);
