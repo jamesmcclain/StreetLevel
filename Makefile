@@ -51,7 +51,7 @@ sort_test: sort_test.o opencl.o bitonic.o partition.o
 %.o: %.c
 	$(CC) $(CFLAGS) $< -c -o $@
 
-# Additional Targets
+# Misc.
 
 test: sort_test viewshed_test
 	sort_test 24

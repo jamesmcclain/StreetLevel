@@ -99,7 +99,7 @@ int main(int argc, const char ** argv) {
 
   /* Query */
   {
-    pdal_point point = data[33];
+    pdal_point point = {.x=0.5, .y=0.5, .z=0.5};
     double bb_min_x = MAX(point.x - EPSILON, 0.0);
     double bb_min_y = MAX(point.y - EPSILON, 0.0);
     double bb_max_x = MIN(point.x + EPSILON, 1.0);
@@ -153,6 +153,13 @@ int main(int argc, const char ** argv) {
             ANSI_COLOR_GREEN "key = 0x%016lX\t x = %lf\t y = %lf\t z = %lf\t index = %ld"
             ANSI_COLOR_RESET "\n",
             max_point->key, max_point->x, max_point->y, max_point->z, max_point - data);
+
+    fprintf(stdout,
+            ANSI_COLOR_BLUE "width:\t\t"
+            ANSI_COLOR_GREEN "%ld"
+            ANSI_COLOR_RESET "\n",
+            (max_point - data) - (min_point - data));
+
   }
 
   unmap_index(_data, &stat);
