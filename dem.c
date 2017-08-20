@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <float.h>
 
 #include "ansi.h"
 #include "curve/curve_interface.h"
@@ -100,8 +101,8 @@ int main(int argc, const char ** argv) {
   /* Query */
   {
     pdal_point point = {.x=0.5, .y=0.5, .z=0.5};
-    double bb_min_x = MAX(point.x - EPSILON, 0.0);
-    double bb_min_y = MAX(point.y - EPSILON, 0.0);
+    double bb_min_x = MAX(point.x + FLT_EPSILON, 0.0);
+    double bb_min_y = MAX(point.y + FLT_EPSILON, 0.0);
     double bb_max_x = MIN(point.x + EPSILON, 1.0);
     double bb_max_y = MIN(point.y + EPSILON, 1.0);
     const pdal_point * min_point = NULL, * max_point = NULL;
