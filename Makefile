@@ -30,7 +30,7 @@ pdal/pdal.o: pdal/pdal.cpp pdal/*.h
 # Programs
 
 dem: dem.o curve/curve_interface.o index/index.o
-	$(CC) $^ -ldl -o $@
+	$(CC) $^ -ldl -lstdc++ -o $@
 
 point_index: point_index.o pdal/pdal.o curve/curve_interface.o index/index.o
 	$(CC) -rdynamic -fopenmp $^ $(PDAL_LDFLAGS) $(STXXL_LDFLAGS) -ldl -lstdc++ -lm -o $@
@@ -50,6 +50,9 @@ sort_test: sort_test.o opencl.o bitonic.o partition.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) $< -c -o $@
+
+%.o: %.cpp
+	$(CC) $(CXXFLAGS) $< -c -o $@
 
 # Misc.
 

@@ -50,8 +50,8 @@ typedef struct query_key {
 
 
 int compar(const void * _key, const void * _point) {
-  const query_key * key = _key;
-  const pdal_point * point = _point;
+  const query_key * key = static_cast<const query_key *>(_key);
+  const pdal_point * point = static_cast<const pdal_point *>(_point);
 
   *(key->point) = point;
   if (key->key < point->key) return -1;
@@ -75,11 +75,11 @@ int main(int argc, const char ** argv) {
   load_curve(argv[1]);
   _data = map_index(argv[2], &stat);
 
-  data = read_header(_data,
-                     curve_name(), curve_version(),
-                     &projection,
-                     &x_min, &x_max, &y_min, &y_max,
-                     &sample_count);
+  data = static_cast<pdal_point *>(read_header(_data,
+                                               curve_name(), curve_version(),
+                                               &projection,
+                                               &x_min, &x_max, &y_min, &y_max,
+                                               &sample_count));
 
   fprintf(stdout,
           ANSI_COLOR_CYAN "projection = "
@@ -106,8 +106,8 @@ int main(int argc, const char ** argv) {
     double bb_max_x = MIN(point.x + EPSILON, 1.0);
     double bb_max_y = MIN(point.y + EPSILON, 1.0);
     const pdal_point * min_point = NULL, * max_point = NULL;
-    query_key min_key = {.point = &min_point, .key = xy_to_curve(bb_min_x, bb_min_y)};
-    query_key max_key = {.point = &max_point, .key = xy_to_curve(bb_max_x, bb_max_y)};
+    query_key min_key = {xy_to_curve(bb_min_x, bb_min_y), &min_point};
+    query_key max_key = {xy_to_curve(bb_max_x, bb_max_y), &max_point};
     double x, y;
     uint32_t x_bits1, y_bits1, x_bits2, y_bits2;
 
