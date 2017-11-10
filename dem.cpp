@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <float.h>
 
 #include "ansi.h"
 #include "curve/curve_interface.h"
@@ -49,8 +50,8 @@ typedef struct query_key {
 
 
 int compar(const void * _key, const void * _point) {
-  const query_key * key = _key;
-  const pdal_point * point = _point;
+  const query_key * key = static_cast<const query_key *>(_key);
+  const pdal_point * point = static_cast<const pdal_point *>(_point);
 
   *(key->point) = point;
   if (key->key < point->key) return -1;
@@ -74,11 +75,11 @@ int main(int argc, const char ** argv) {
   load_curve(argv[1]);
   _data = map_index(argv[2], &stat);
 
-  data = read_header(_data,
-                     curve_name(), curve_version(),
-                     &projection,
-                     &x_min, &x_max, &y_min, &y_max,
-                     &sample_count);
+  data = static_cast<pdal_point *>(read_header(_data,
+                                               curve_name(), curve_version(),
+                                               &projection,
+                                               &x_min, &x_max, &y_min, &y_max,
+                                               &sample_count));
 
   fprintf(stdout,
           ANSI_COLOR_CYAN "projection = "
@@ -99,14 +100,14 @@ int main(int argc, const char ** argv) {
 
   /* Query */
   {
-    pdal_point point = data[33];
-    double bb_min_x = MAX(point.x - EPSILON, 0.0);
-    double bb_min_y = MAX(point.y - EPSILON, 0.0);
+    pdal_point point = {.x=0.5, .y=0.5, .z=0.5};
+    double bb_min_x = MAX(point.x + FLT_EPSILON, 0.0);
+    double bb_min_y = MAX(point.y + FLT_EPSILON, 0.0);
     double bb_max_x = MIN(point.x + EPSILON, 1.0);
     double bb_max_y = MIN(point.y + EPSILON, 1.0);
     const pdal_point * min_point = NULL, * max_point = NULL;
-    query_key min_key = {.point = &min_point, .key = xy_to_curve(bb_min_x, bb_min_y)};
-    query_key max_key = {.point = &max_point, .key = xy_to_curve(bb_max_x, bb_max_y)};
+    query_key min_key = {xy_to_curve(bb_min_x, bb_min_y), &min_point};
+    query_key max_key = {xy_to_curve(bb_max_x, bb_max_y), &max_point};
     double x, y;
     uint32_t x_bits1, y_bits1, x_bits2, y_bits2;
 
@@ -153,6 +154,13 @@ int main(int argc, const char ** argv) {
             ANSI_COLOR_GREEN "key = 0x%016lX\t x = %lf\t y = %lf\t z = %lf\t index = %ld"
             ANSI_COLOR_RESET "\n",
             max_point->key, max_point->x, max_point->y, max_point->z, max_point - data);
+
+    fprintf(stdout,
+            ANSI_COLOR_BLUE "width:\t\t"
+            ANSI_COLOR_GREEN "%ld"
+            ANSI_COLOR_RESET "\n",
+            (max_point - data) - (min_point - data));
+
   }
 
   unmap_index(_data, &stat);

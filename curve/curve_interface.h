@@ -35,10 +35,18 @@
 
 #include "curve.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern to_curve xy_to_curve;
 extern from_curve curve_to_xy;
 extern name_of_curve curve_name;
 extern version_of_curve curve_version;
 extern void load_curve(const char * sofilename);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
